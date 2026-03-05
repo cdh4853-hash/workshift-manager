@@ -1,0 +1,2266 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WorkShift · 근무관리</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#4a4a4a;--s1:#3a3a3a;--s2:#525252;--s3:#5e5e5e;
+  --border:#6a6a6a;--border2:#787878;
+  --accent:#e8d5a0;--green:#7ec87e;--orange:#e8a84a;--red:#e86060;--purple:#b8a0d8;
+  --text:#f5f5f0;--text2:#e0e0d8;--text3:#c0c0b8;
+  --mono:'JetBrains Mono',monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;overflow:hidden}
+body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text);display:flex;flex-direction:column;font-weight:600}
+
+/* ── TOPBAR ── */
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:0 24px;height:56px;background:var(--s1);border-bottom:1px solid var(--border);flex-shrink:0;z-index:50}
+.logo{display:flex;align-items:center;gap:10px;font-weight:800;font-size:15px;letter-spacing:-.5px}
+.logo-icon{width:30px;height:30px;background:var(--accent);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px}
+.logo span{color:var(--accent)}
+.nav{display:flex;gap:2px}
+.nav-btn{padding:7px 16px;border-radius:7px;font-size:13px;font-weight:500;cursor:pointer;border:none;background:transparent;color:var(--text2);font-family:inherit;transition:all .15s}
+.nav-btn:hover{background:var(--s3);color:var(--text)}
+.nav-btn.on{background:rgba(59,130,246,.12);color:var(--accent);font-weight:600}
+.topbar-right{display:flex;gap:8px;align-items:center}
+.conn-dot{width:7px;height:7px;border-radius:50%;background:var(--text3)}
+.conn-dot.ok{background:var(--green);box-shadow:0 0 6px var(--green)}
+.conn-dot.err{background:var(--red)}
+.conn-lbl{font-size:11px;color:var(--text3)}
+
+/* ── LAYOUT ── */
+.body-wrap{display:flex;flex:1;overflow:hidden}
+.sidebar{width:210px;flex-shrink:0;background:var(--s1);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+.sidebar-inner{flex:1;overflow-y:auto;padding:14px 10px}
+.sb-lbl{font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:var(--text3);padding:10px 8px 6px;font-weight:700}
+.team-row{display:flex;align-items:center;gap:9px;padding:9px 10px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;transition:all .15s;border:1.5px solid transparent;margin-bottom:2px}
+.team-row:hover{background:var(--s3)}
+.team-row.on{background:rgba(59,130,246,.08);border-color:rgba(59,130,246,.25);color:var(--accent)}
+.t-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.t-cnt{margin-left:auto;font-size:10px;background:var(--s3);padding:2px 7px;border-radius:10px;color:var(--text3);font-family:var(--mono)}
+.sb-add{margin:6px 0 0;padding:8px;border:1.5px dashed var(--border2);border-radius:8px;background:transparent;color:var(--text3);font-size:12px;cursor:pointer;width:100%;font-family:inherit;transition:all .2s}
+.sb-add:hover{border-color:var(--accent);color:var(--accent)}
+
+/* ── CONTENT ── */
+.content{flex:1;overflow-y:auto;padding:26px 28px}
+.page{display:none}.page.on{display:block}
+.sec-hd{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px;gap:12px;flex-wrap:wrap}
+.sec-title{font-size:18px;font-weight:800;letter-spacing:-.5px}
+.sec-sub{font-size:12px;color:var(--text2);margin-top:3px}
+.toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+
+/* ── STATS ── */
+.stats-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px}
+.stat-card{background:var(--s2);border:1px solid var(--border);border-radius:12px;padding:18px 20px;position:relative;overflow:hidden}
+.stat-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px}
+.stat-card.blue::before{background:var(--accent)}
+.stat-card.green::before{background:var(--green)}
+.stat-card.orange::before{background:var(--orange)}
+.stat-card.red::before{background:var(--red)}
+.stat-lbl{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--text3);margin-bottom:8px;font-weight:700}
+.stat-val{font-size:30px;font-weight:800;font-family:var(--mono);line-height:1}
+.stat-val.blue{color:var(--accent)}.stat-val.green{color:var(--green)}.stat-val.orange{color:var(--orange)}.stat-val.red{color:var(--red)}
+.stat-desc{font-size:11px;color:var(--text3);margin-top:6px}
+
+/* ── CARD ── */
+.card{background:var(--s2);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:16px}
+.card-hd{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--border)}
+.card-title{font-size:13px;font-weight:700}
+.chart-wrap{padding:18px 20px}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px}
+
+/* ── SUB TABS ── */
+.sub-tabs{display:flex;gap:0;background:var(--s3);border-radius:10px;padding:4px;margin-bottom:20px;width:fit-content}
+.sub-tab{padding:7px 24px;border-radius:7px;font-size:13px;font-weight:600;cursor:pointer;border:none;background:transparent;color:var(--text3);font-family:inherit;transition:all .15s}
+.sub-tab.on{background:var(--s1);color:var(--text);box-shadow:0 1px 4px rgba(0,0,0,.4)}
+
+/* ── TABLE ── */
+table{width:100%;border-collapse:collapse}
+thead th{background:var(--s3);font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--text3);padding:10px 14px;text-align:left;font-weight:700}
+tbody tr{border-bottom:1px solid var(--border);transition:background .1s}
+tbody tr:last-child{border-bottom:none}
+tbody tr:hover{background:rgba(255,255,255,.02)}
+td{padding:11px 14px;font-size:13px}
+
+/* ── BADGE ── */
+.badge{display:inline-flex;align-items:center;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:600;white-space:nowrap}
+.b-blue{background:rgba(59,130,246,.15);color:var(--accent)}
+.b-green{background:rgba(16,185,129,.15);color:var(--green)}
+.b-orange{background:rgba(245,158,11,.15);color:var(--orange)}
+.b-red{background:rgba(244,63,94,.15);color:var(--red)}
+
+/* ── BAR CHART ── */
+.mb{margin-bottom:13px}.mb:last-child{margin-bottom:0}
+.mb-top{display:flex;justify-content:space-between;align-items:center;font-size:12px;margin-bottom:6px}
+.mb-track{height:22px;background:var(--s3);border-radius:6px;overflow:hidden;position:relative}
+.mb-fill{height:100%;border-radius:6px;transition:width .5s;display:flex;align-items:center;padding-left:10px;font-size:11px;color:#fff;font-weight:600}
+/* 12시간 한도선 */
+.mb-limit{position:absolute;top:0;bottom:0;width:2px;background:rgba(244,63,94,.7);z-index:2}
+.mb-limit::after{content:'12h';position:absolute;top:-16px;left:2px;font-size:9px;color:var(--red);font-family:var(--mono);font-weight:700;white-space:nowrap}
+
+/* ── 주간현황 카드 ── */
+.week-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin-bottom:16px}
+.week-card{background:var(--s2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;position:relative;overflow:hidden;transition:border-color .2s}
+.week-card.warn{border-color:rgba(245,158,11,.5);background:rgba(245,158,11,.04)}
+.week-card.over{border-color:rgba(244,63,94,.5);background:rgba(244,63,94,.04)}
+.week-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--border)}
+.week-card.warn::before{background:var(--orange)}
+.week-card.over::before{background:var(--red)}
+.wc-name{font-size:13px;font-weight:700;margin-bottom:2px}
+.wc-role{font-size:11px;color:var(--text3);margin-bottom:10px}
+.wc-bar-wrap{height:8px;background:var(--s3);border-radius:4px;overflow:hidden;margin-bottom:6px;position:relative}
+.wc-bar{height:100%;border-radius:4px;transition:width .5s}
+.wc-nums{display:flex;justify-content:space-between;align-items:center}
+.wc-h{font-family:var(--mono);font-size:14px;font-weight:800}
+.wc-tag{font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px}
+.tag-ok{background:rgba(16,185,129,.15);color:var(--green)}
+.tag-warn{background:rgba(245,158,11,.15);color:var(--orange)}
+.tag-over{background:rgba(244,63,94,.15);color:var(--red)}
+
+/* ── 52시간 안내 ── */
+.rule-banner{display:flex;align-items:center;gap:12px;background:rgba(244,63,94,.06);border:1px solid rgba(244,63,94,.2);border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:12px}
+.rule-icon{font-size:18px}
+.rule-text strong{display:block;font-size:13px;margin-bottom:2px}
+.rule-text span{color:var(--text3)}
+
+/* ── FORMS ── */
+.fsel,.finput{background:var(--s3);border:1px solid var(--border2);border-radius:8px;color:var(--text);padding:8px 12px;font-size:12px;font-family:inherit;outline:none;transition:border-color .2s}
+.fsel:focus,.finput:focus{border-color:var(--accent)}
+.fsel option{background:var(--s2)}
+
+/* ── BUTTONS ── */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;border:none;font-family:inherit;transition:all .15s}
+.btn-primary{background:var(--accent);color:#fff}.btn-primary:hover{background:#2563eb}
+.btn-ghost{background:transparent;border:1px solid var(--border2);color:var(--text2)}.btn-ghost:hover{border-color:var(--accent);color:var(--accent)}
+.btn-danger{background:rgba(244,63,94,.12);border:1px solid rgba(244,63,94,.25);color:var(--red)}.btn-danger:hover{background:rgba(244,63,94,.22)}
+.btn-sm{padding:5px 10px;font-size:11px}
+
+/* ── MODAL ── */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);backdrop-filter:blur(5px);z-index:200;display:none;align-items:center;justify-content:center}
+.overlay.open{display:flex}
+.modal{background:var(--s2);border:1px solid var(--border2);border-radius:16px;padding:26px;width:540px;max-width:95vw;max-height:88vh;overflow-y:auto}
+.modal h3{font-size:15px;font-weight:800;margin-bottom:20px}
+.frow{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+.fg{display:flex;flex-direction:column;gap:5px}
+.fg.full{grid-column:1/-1}
+.fg label{font-size:10px;color:var(--text3);font-weight:700;text-transform:uppercase;letter-spacing:.6px}
+.fg .finput,.fg .fsel{width:100%}
+.modal-acts{display:flex;gap:8px;justify-content:flex-end;margin-top:18px;padding-top:16px;border-top:1px solid var(--border)}
+.calc-box{background:rgba(59,130,246,.06);border:1px solid rgba(59,130,246,.2);border-radius:10px;padding:16px;margin:14px 0;display:grid;grid-template-columns:repeat(2,1fr);gap:8px;text-align:center}
+.calc-lbl{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;font-weight:700;margin-bottom:6px}
+.calc-val{font-size:22px;font-weight:800;font-family:var(--mono)}
+.calc-val.blue{color:var(--accent)}.calc-val.green{color:var(--green)}
+.days-wrap{display:flex;gap:6px;flex-wrap:wrap}
+.day-chip{padding:5px 11px;border-radius:6px;font-size:12px;font-weight:600;border:1.5px solid var(--border2);cursor:pointer;transition:all .15s;color:var(--text3)}
+.day-chip.on{border-color:var(--accent);background:rgba(59,130,246,.12);color:var(--accent)}
+
+/* ── SCHEDULE ── */
+.sched-wrap{overflow-x:auto}
+.sched-wrap table th{min-width:32px;text-align:center}
+.sched-wrap td{text-align:center;font-size:11px;padding:7px 3px}
+.s-sticky1{position:sticky;left:0;z-index:2;background:var(--s2)!important;min-width:65px}
+.s-sticky2{position:sticky;left:65px;z-index:2;background:var(--s2)!important;min-width:80px}
+.s-th1{position:sticky;left:0;z-index:3;background:var(--s3)!important}
+.s-th2{position:sticky;left:65px;z-index:3;background:var(--s3)!important}
+
+.empty{text-align:center;padding:50px;color:var(--text3)}
+.empty .ei{font-size:36px;margin-bottom:10px}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+</style>
+</head>
+<body>
+
+<!-- ── 로그인 화면 ── -->
+<div id="loginScreen" style="position:fixed;inset:0;background:var(--bg);z-index:9999;display:flex;align-items:center;justify-content:center">
+  <div style="background:var(--s2);border:1px solid var(--border);border-radius:16px;padding:40px;width:340px;box-shadow:0 8px 32px rgba(0,0,0,0.4)">
+    <div style="text-align:center;margin-bottom:28px">
+      <div style="font-size:32px;margin-bottom:8px">☕</div>
+      <div style="font-size:20px;font-weight:900;letter-spacing:2px;color:var(--accent)">MOMOS</div>
+      <div style="font-size:11px;color:var(--text3);letter-spacing:1px;margin-top:4px">Production Schedule</div>
+    </div>
+    <div style="margin-bottom:14px">
+      <label style="font-size:11px;font-weight:700;color:var(--text3);display:block;margin-bottom:6px">이메일</label>
+      <input class="finput" id="loginEmail" type="email" placeholder="example@email.com" style="width:100%">
+    </div>
+    <div style="margin-bottom:20px">
+      <label style="font-size:11px;font-weight:700;color:var(--text3);display:block;margin-bottom:6px">비밀번호</label>
+      <input class="finput" id="loginPw" type="password" placeholder="••••••••" style="width:100%" onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <div id="loginErr" style="display:none;font-size:12px;color:var(--red);margin-bottom:12px;text-align:center;font-weight:700"></div>
+    <button class="btn btn-primary" id="loginBtn" onclick="doLogin()" style="width:100%;padding:12px;font-size:14px;font-weight:700">로그인</button>
+  </div>
+</div>
+
+<div class="topbar">
+  <div class="logo"><div class="logo-icon">☕</div><div><div style="font-size:15px;font-weight:900;letter-spacing:.5px">MOMOS</div><div style="font-size:9px;font-weight:500;color:var(--text2);letter-spacing:1.5px;text-transform:uppercase;margin-top:1px">Production Schedule</div></div></div>
+  <div class="nav">
+    <button class="nav-btn on" onclick="goto('dashboard')">📊 대시보드</button>
+    <button class="nav-btn" onclick="goto('members')">👥 인원관리</button>
+    <button class="nav-btn" onclick="goto('overtime')">⏱ 연장근무</button>
+    <button class="nav-btn" onclick="goto('schedule')">📅 스케줄표</button>
+    <button class="nav-btn" onclick="goto('settings')">⚙️ 설정</button>
+    <button class="nav-btn" onclick="goto('password')">🔒 비밀번호</button>
+  </div>
+  <div class="topbar-right">
+    <div class="conn-dot" id="connDot"></div>
+    <span class="conn-lbl" id="connLbl">연결중...</span>
+    <span id="loginUserEmail" style="font-size:11px;color:var(--text3);margin-right:4px"></span>
+    <button class="btn btn-ghost btn-sm" onclick="doLogout()">로그아웃</button>
+    <button class="btn btn-ghost btn-sm" onclick="exportExcel()">📥 엑셀</button>
+  </div>
+</div>
+
+<div class="body-wrap">
+  <div class="sidebar">
+    <div class="sidebar-inner">
+      <div class="sb-lbl">팀 목록</div>
+      <div id="teamList"></div>
+      <button class="sb-add" onclick="openModal('modalTeam')">＋ 팀 추가</button>
+      <div class="sb-lbl" style="margin-top:16px">구분</div>
+      <div id="roleList">
+        <div class="team-row" id="role-all" onclick="selectRole('all')">
+          <div class="t-dot" style="background:var(--text3)"></div>전체
+        </div>
+        <div class="team-row" id="role-employee" onclick="selectRole('직원')">
+          <div class="t-dot" style="background:#10b981"></div>직원
+        </div>
+        <div class="team-row" id="role-parttime" onclick="selectRole('파트타이머')">
+          <div class="t-dot" style="background:#f59e0b"></div>파트타이머
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- ── DASHBOARD ── -->
+    <div class="page on" id="page-dashboard">
+      <div class="sec-hd">
+        <div>
+          <div class="sec-title">📊 대시보드</div>
+          <div class="sec-sub" id="dashSub"></div>
+        </div>
+        <div class="toolbar">
+          <select class="fsel" id="dTeam" onchange="renderDash()"><option value="">전체 팀</option></select>
+          <div class="sub-tabs" style="margin-bottom:0">
+            <button class="sub-tab on" id="dViewMonth" onclick="switchDashView('month')">월별</button>
+            <button class="sub-tab" id="dViewYear" onclick="switchDashView('year')">연간</button>
+          </div>
+          <input type="month" class="fsel" id="dMonth" onchange="renderDash()">
+          <select class="fsel" id="dYear" onchange="renderDash()" style="display:none"></select>
+        </div>
+      </div>
+
+      <!-- 전체 보기: 통계 + 팀별 차트 + 사유별 -->
+      <div id="dash-all">
+        <div class="stats-grid" id="statsGrid"></div>
+        <div class="two-col">
+          <div class="card">
+            <div class="card-hd">
+              <span class="card-title" id="teamChartTitle">🏢 팀별 연장시간</span>
+              <span style="font-size:11px;color:var(--text3)" id="teamChartHint">클릭 → 인원별 상세</span>
+            </div>
+            <div class="chart-wrap" id="teamChart" style="min-height:120px"></div>
+          </div>
+          <div class="card">
+            <div class="card-hd"><span class="card-title">📋 사유별 현황</span></div>
+            <div class="chart-wrap" id="reasonChart"></div>
+          </div>
+        </div>
+        <!-- 연간 전용: 팀별 연장시간 -->
+        <div class="card" id="yearTeamCard" style="display:none">
+          <div class="card-hd">
+            <span class="card-title">🏢 팀별 연장시간 (연간)</span>
+            <span style="font-size:11px;color:var(--text3)">연간 팀별 합계</span>
+          </div>
+          <div class="chart-wrap" id="yearTeamChart" style="min-height:120px"></div>
+        </div>
+      </div>
+
+      <!-- 팀 선택 시: 인원별 주간 연장 현황 -->
+      <div id="dash-team" style="display:none">
+        <div class="rule-banner">
+          <span class="rule-icon">⚠️</span>
+          <div class="rule-text">
+            <strong>주 52시간제 · 연장근무 한도 주 12시간</strong>
+            <span>주 12시간 초과 시 위험 표시, 8시간 이상 시 주의 표시</span>
+          </div>
+        </div>
+        <div class="stats-grid" id="teamStatsGrid" style="grid-template-columns:repeat(3,1fr)"></div>
+        <div class="two-col">
+          <div class="card">
+            <div class="card-hd">
+              <span class="card-title" id="teamDetailTitle"></span>
+              <div style="display:flex;gap:8px;align-items:center">
+                <select class="fsel" id="weekFilter" onchange="renderTeamDetail()" style="font-size:11px;padding:5px 10px"></select>
+                <span style="cursor:pointer;font-size:12px;color:var(--accent)" onclick="backToAll()">← 전체 팀</span>
+              </div>
+            </div>
+            <div class="chart-wrap" id="memberWeekChart"></div>
+          </div>
+          <div class="card">
+            <div class="card-hd"><span class="card-title">📋 사유별 연장시간</span></div>
+            <div class="chart-wrap" id="teamReasonChart"></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-hd"><span class="card-title">📅 인원별 주차별 연장 현황</span></div>
+          <div style="overflow-x:auto">
+            <table id="weekTable">
+              <thead id="weekTableHead"></thead>
+              <tbody id="weekTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <!-- 구분 선택 시: 직원/파트타이머 인원별 연장시간 -->
+      <div id="dash-role" style="display:none">
+        <div class="stats-grid" id="roleStatsGrid" style="grid-template-columns:repeat(3,1fr)"></div>
+        <div class="card">
+          <div class="card-hd">
+            <span class="card-title" id="roleChartTitle"></span>
+            <span style="cursor:pointer;font-size:12px;color:var(--accent)" onclick="backToAll()">← 전체 팀</span>
+          </div>
+          <div class="chart-wrap" id="roleChart" style="min-height:160px"></div>
+        </div>
+      </div>
+    </div> -->
+    <div class="page" id="page-members">
+      <div class="sec-hd">
+        <div>
+          <div class="sec-title">👥 인원관리</div>
+          <div class="sec-sub" id="memberSub"></div>
+        </div>
+        <div class="toolbar">
+          <button class="btn btn-primary" onclick="openAddMember()">＋ 인원 추가</button>
+        </div>
+      </div>
+      <div class="card">
+        <table><thead><tr><th>이름</th><th>팀</th><th>구분</th><th>출근</th><th>퇴근</th><th>근무요일</th><th>연락처</th><th>관리</th></tr></thead>
+        <tbody id="memberBody"></tbody></table>
+      </div>
+    </div>
+
+    <!-- ── OVERTIME ── -->
+    <div class="page" id="page-overtime">
+      <div class="sec-hd">
+        <div>
+          <div class="sec-title">⏱ 연장근무</div>
+          <div class="sec-sub" id="otSub"></div>
+        </div>
+        <div class="toolbar">
+          <select class="fsel" id="otMemberF" onchange="renderOTPage()"><option value="">전체 인원</option></select>
+          <input type="month" class="fsel" id="otMonth" onchange="renderOTPage()">
+          <button class="btn btn-ghost btn-sm" onclick="downloadAllOT()">⬇️ 전체 다운로드</button>
+          <button class="btn btn-ghost btn-sm" onclick="openBulkOT()">📋 일괄 입력</button>
+          <button class="btn btn-primary" onclick="openAddOT()">＋ 연장 입력</button>
+        </div>
+      </div>
+      <div class="stats-grid" id="otStats" style="grid-template-columns:repeat(4,1fr)"></div>
+      <!-- 서브탭 -->
+      <div class="sub-tabs">
+        <button class="sub-tab on" id="stab-ot" onclick="switchOTTab('ot')">📋 연장근무</button>
+        <button class="sub-tab" id="stab-bonus" onclick="switchOTTab('bonus')">🌙 야간 가산수당</button>
+        <button class="sub-tab" id="stab-log" onclick="switchOTTab('log')">📝 변경 로그</button>
+      </div>
+      <!-- 연장근무 탭 -->
+      <div id="subtab-ot">
+        <div class="card">
+          <table>
+            <thead><tr><th>날짜</th><th>팀</th><th>이름</th><th>시작</th><th>마감</th><th>연장(h)</th><th>사유</th><th>비고</th><th>관리</th></tr></thead>
+            <tbody id="otBody"></tbody>
+          </table>
+        </div>
+      </div>
+      <!-- 야간 가산수당 탭 -->
+      <div id="subtab-bonus" style="display:none">
+        <div class="card">
+          <table>
+            <thead><tr><th>날짜</th><th>팀</th><th>이름</th><th>시작</th><th>마감</th><th>야간(h)</th><th>가산수당(h)</th><th>비고</th></tr></thead>
+            <tbody id="bonusBody"></tbody>
+          </table>
+        </div>
+      </div>
+      <!-- 변경 로그 탭 -->
+      <div id="subtab-log" style="display:none">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <span style="font-size:12px;color:var(--text3)">최근 <strong style="color:var(--text2)">200건</strong> 표시 · 전체 로그는 다운로드로 확인</span>
+          <button class="btn btn-ghost btn-sm" onclick="downloadAllLogs()">⬇️ 전체 로그 다운로드</button>
+        </div>
+        <div class="card">
+          <table>
+            <thead><tr><th>일시</th><th>작업</th><th>이름</th><th>날짜</th><th>연장(h)</th><th>변경자</th><th>상세</th></tr></thead>
+            <tbody id="logBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── SCHEDULE ── -->
+    <div class="page" id="page-schedule">
+      <div class="sec-hd">
+        <div>
+          <div class="sec-title">📅 스케줄표</div>
+          <div class="sec-sub" id="schedSub"></div>
+        </div>
+        <div class="toolbar">
+          <input type="month" class="fsel" id="scMonth" onchange="renderSchedule()">
+        </div>
+      </div>
+      <div class="card sched-wrap" id="schedGrid"></div>
+    </div>
+
+    <!-- ── SETTINGS ── -->
+    <div class="page" id="page-settings">
+      <div class="sec-hd">
+        <div><div class="sec-title">⚙️ 설정</div></div>
+        <div class="toolbar">
+          <button class="btn btn-ghost btn-sm" onclick="openModal('modalTeam')">＋ 팀 추가</button>
+        </div>
+      </div>
+      <div style="display:flex;gap:16px;align-items:flex-start;max-width:720px">
+        <!-- 팀 목록 -->
+        <div class="card" style="width:200px;flex-shrink:0">
+          <div class="card-hd"><span class="card-title">🏢 팀 목록</span></div>
+          <div style="padding:6px 8px" id="teamSettingList"></div>
+        </div>
+        <!-- 선택된 팀 사유 -->
+        <div class="card" style="flex:1" id="reasonPanel">
+          <div class="card-hd">
+            <span class="card-title" id="reasonPanelTitle">← 팀을 선택하세요</span>
+            <button class="btn btn-primary btn-sm" id="reasonAddBtn" style="display:none" onclick="openAddReason()">＋ 사유 추가</button>
+          </div>
+          <div style="padding:8px 16px" id="reasonList">
+            <div class="empty" style="padding:24px 0"><div class="ei">👈</div>왼쪽에서 팀을 선택하면<br>해당 팀의 연장사유가 표시됩니다</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── PASSWORD ── -->
+    <div class="page" id="page-password">
+      <div class="sec-hd"><div><div class="sec-title">🔒 비밀번호 변경</div></div></div>
+      <div class="card" style="max-width:380px">
+        <div style="padding:16px;display:flex;flex-direction:column;gap:14px">
+          <div>
+            <label style="font-size:11px;font-weight:700;color:var(--text3);display:block;margin-bottom:6px">현재 비밀번호</label>
+            <input class="finput" type="password" id="pwCurrent" placeholder="현재 비밀번호" style="width:100%">
+          </div>
+          <div>
+            <label style="font-size:11px;font-weight:700;color:var(--text3);display:block;margin-bottom:6px">새 비밀번호</label>
+            <input class="finput" type="password" id="pwNew" placeholder="새 비밀번호 (6자 이상)" style="width:100%">
+          </div>
+          <div>
+            <label style="font-size:11px;font-weight:700;color:var(--text3);display:block;margin-bottom:6px">새 비밀번호 확인</label>
+            <input class="finput" type="password" id="pwConfirm" placeholder="새 비밀번호 재입력" style="width:100%"
+              onkeydown="if(event.key==='Enter')changePassword()">
+          </div>
+          <div id="pwMsg" style="display:none;font-size:12px;font-weight:700;padding:8px 12px;border-radius:8px"></div>
+          <button class="btn btn-primary" onclick="changePassword()" style="width:100%">비밀번호 변경</button>
+          <div style="font-size:11px;color:var(--text3)">💡 본인 계정의 비밀번호만 변경 가능합니다</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ── MODALS ── -->
+<div class="overlay" id="modalTeam">
+  <div class="modal" style="width:380px">
+    <h3>팀 추가</h3>
+    <div class="frow">
+      <div class="fg full"><label>팀 이름</label><input class="finput" id="tName" placeholder="예: 생산 1팀"></div>
+      <div class="fg full"><label>팀 색상</label><input type="color" class="finput" id="tColor" value="#3b82f6" style="height:42px;cursor:pointer"></div>
+    </div>
+    <div class="modal-acts">
+      <button class="btn btn-ghost" onclick="closeModal('modalTeam')">취소</button>
+      <button class="btn btn-primary" onclick="addTeam()">추가</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="modalMember">
+  <div class="modal">
+    <h3 id="modalMemberTitle">인원 추가</h3>
+    <input type="hidden" id="mEditId">
+    <div class="frow">
+      <div class="fg"><label>이름</label><input class="finput" id="mName" placeholder="홍길동"></div>
+      <div class="fg"><label>팀</label><select class="fsel" id="mTeamSel"></select></div>
+      <div class="fg"><label>구분</label><select class="fsel" id="mRole"><option>직원</option><option>파트타이머</option></select></div>
+      <div class="fg"><label>연락처</label><input class="finput" id="mPhone" placeholder="010-0000-0000"></div>
+      <div class="fg"><label>출근시간</label><input type="time" class="finput" id="mIn" value="08:00"></div>
+      <div class="fg"><label>퇴근시간</label><input type="time" class="finput" id="mOut" value="17:00"></div>
+      <div class="fg full"><label>근무요일</label><div class="days-wrap" id="mDays"></div></div>
+    </div>
+    <div class="modal-acts">
+      <button class="btn btn-ghost" onclick="closeModal('modalMember')">취소</button>
+      <button class="btn btn-primary" onclick="saveMember()">저장</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="modalBulkOT">
+  <div class="modal" style="max-width:560px">
+    <h3>📋 연장근무 일괄 입력</h3>
+    <div class="frow">
+      <div class="fg"><label>날짜</label><input type="date" class="finput" id="bulkDate"></div>
+      <div class="fg"><label>시작시간</label><select class="fsel" id="bulkStart" style="font-family:var(--mono)"></select></div>
+      <div class="fg"><label>마감시간</label><select class="fsel" id="bulkEnd" style="font-family:var(--mono)"></select></div>
+      <div class="fg"><label>연장시간 <span style="color:var(--accent);font-size:10px">(직접입력)</span></label>
+        <input type="number" class="finput" id="bulkHours" placeholder="예: 2 또는 1.5" min="0.5" max="24" step="0.5" style="font-size:18px;font-weight:800;font-family:var(--mono);text-align:center">
+      </div>
+      <div class="fg"><label>연장사유</label><select class="fsel" id="bulkReason"></select></div>
+      <div class="fg full"><label>비고</label><input class="finput" id="bulkNote" placeholder="공통 비고 (선택)" style="width:100%"></div>
+    </div>
+
+    <!-- 인원 선택 -->
+    <div style="margin-top:14px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <div style="display:flex;align-items:center;gap:8px">
+          <label style="font-size:11px;font-weight:800;color:var(--text3)">인원 선택</label>
+          <select class="fsel" id="bulkTeamFilter" onchange="updateBulkMembers()" style="font-size:11px;padding:4px 10px">
+            <option value="">전체 팀</option>
+          </select>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-ghost btn-sm" onclick="bulkSelectAll(true)">전체 선택</button>
+          <button class="btn btn-ghost btn-sm" onclick="bulkSelectAll(false)">전체 해제</button>
+        </div>
+      </div>
+      <div id="bulkMemberList" style="display:flex;flex-wrap:wrap;gap:8px;max-height:180px;overflow-y:auto;padding:8px;background:rgba(0,0,0,.15);border-radius:10px"></div>
+    </div>
+
+    <div style="margin-top:10px;padding:10px 14px;background:rgba(59,130,246,.08);border-radius:8px;font-size:12px;color:var(--text2)">
+      선택된 인원 수: <strong id="bulkSelectedCount" style="color:var(--accent)">0</strong>명 · 각각 동일한 날짜/시간/사유로 저장됩니다
+    </div>
+    <div class="modal-acts">
+      <button class="btn btn-ghost" onclick="closeModal('modalBulkOT')">취소</button>
+      <button class="btn btn-primary" onclick="saveBulkOT()">일괄 저장</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="modalOT">
+  <div class="modal">
+    <h3>⏱ 연장근무 입력</h3>
+    <div class="frow">
+      <div class="fg"><label>날짜</label><input type="date" class="finput" id="otDate"></div>
+      <div class="fg"><label>팀</label><select class="fsel" id="otTeamSel" onchange="updateOTMembers()"></select></div>
+      <div class="fg"><label>이름</label><select class="fsel" id="otMemberSel" onchange="calcOT()"></select></div>
+      <div class="fg"><label>연장사유</label><select class="fsel" id="otReason"></select></div>
+
+      <div class="fg"><label>시작시간</label>
+        <select class="fsel" id="otStart" onchange="calcOT()" style="font-family:var(--mono);font-size:13px"></select>
+      </div>
+      <div class="fg"><label>마감시간</label>
+        <select class="fsel" id="otEnd" onchange="calcOT()" style="font-family:var(--mono);font-size:13px"></select>
+      </div>
+
+      <div class="fg full">
+        <label>연장시간 <span style="color:var(--accent);font-weight:700">(직접 입력)</span></label>
+        <div style="display:flex;align-items:center;gap:12px">
+          <input type="number" class="finput" id="otHourDirect"
+            placeholder="예: 3 또는 1.5"
+            min="0.5" max="24" step="0.5"
+            oninput="calcOT()"
+            style="width:160px;font-size:20px;font-weight:800;font-family:var(--mono);text-align:center;letter-spacing:1px">
+          <span style="font-size:12px;color:var(--text3)">시간 단위 · 0.5h 단위 입력</span>
+        </div>
+      </div>
+
+      <div class="fg full"><label>비고</label><input class="finput" id="otNote" placeholder="구체적인 내용 (선택)" style="width:100%"></div>
+    </div>
+
+    <div class="calc-box" style="grid-template-columns:repeat(3,1fr)">
+      <div>
+        <div class="calc-lbl">연장시간</div>
+        <div class="calc-val blue" id="cv-total">—</div>
+        <div style="font-size:10px;color:var(--text3);margin-top:4px">직접 입력값</div>
+      </div>
+      <div>
+        <div class="calc-lbl">🌙 야간 (22:00~06:00)</div>
+        <div class="calc-val" style="color:var(--orange)" id="cv-night">—</div>
+        <div style="font-size:10px;color:var(--text3);margin-top:4px">시작·마감 기준 자동계산</div>
+      </div>
+      <div>
+        <div class="calc-lbl">가산수당 (×0.5)</div>
+        <div class="calc-val" style="color:var(--red)" id="cv-bonus">—</div>
+        <div style="font-size:10px;color:var(--text3);margin-top:4px">야간 × 0.5h</div>
+      </div>
+    </div>
+    <div style="font-size:11px;color:var(--text3);margin-bottom:4px">
+      💡 시작·마감시간으로 야간가산만 자동계산 · 연장시간은 직접 입력 · 점심 1시간 포함 고려
+    </div>
+    <div class="modal-acts">
+      <button class="btn btn-ghost" onclick="closeModal('modalOT')">취소</button>
+      <button class="btn btn-primary" onclick="saveOT()">저장</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="modalEditOT">
+  <div class="modal">
+    <h3>✏️ 연장근무 수정</h3>
+    <input type="hidden" id="editOtId">
+    <div class="frow">
+      <div class="fg"><label>날짜</label><input type="date" class="finput" id="editOtDate"></div>
+      <div class="fg"><label>팀</label><select class="fsel" id="editOtTeamSel" onchange="updateEditOTMembers()"></select></div>
+      <div class="fg"><label>이름</label><select class="fsel" id="editOtMemberSel"></select></div>
+      <div class="fg"><label>연장사유</label><select class="fsel" id="editOtReason"></select></div>
+      <div class="fg"><label>시작시간</label>
+        <select class="fsel" id="editOtStart" style="font-family:var(--mono);font-size:13px"></select>
+      </div>
+      <div class="fg"><label>마감시간</label>
+        <select class="fsel" id="editOtEnd" style="font-family:var(--mono);font-size:13px"></select>
+      </div>
+      <div class="fg full">
+        <label>연장시간 <span style="color:var(--accent);font-weight:700">(직접 입력)</span></label>
+        <input type="number" class="finput" id="editOtHour" min="0.5" max="24" step="0.5"
+          style="width:160px;font-size:20px;font-weight:800;font-family:var(--mono);text-align:center">
+      </div>
+      <div class="fg full"><label>비고</label><input class="finput" id="editOtNote" style="width:100%"></div>
+      <div class="fg full">
+        <label>수정 사유 <span style="color:var(--red);font-weight:700">*필수</span></label>
+        <input class="finput" id="editOtChangeReason" placeholder="수정 이유를 입력하세요" style="width:100%">
+      </div>
+    </div>
+    <div class="modal-acts">
+      <button class="btn btn-ghost" onclick="closeModal('modalEditOT')">취소</button>
+      <button class="btn btn-primary" onclick="updateOT()">수정 저장</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="modalReason">
+  <div class="modal" style="width:380px">
+    <h3>연장사유 추가</h3>
+    <div class="frow">
+      <div class="fg full">
+        <label>팀 선택</label>
+        <select class="fsel" id="rTeamId" style="width:100%">
+          <option value="">전체 공통</option>
+        </select>
+      </div>
+      <div class="fg full">
+        <label>사유명</label>
+        <input class="finput" id="rLabel" placeholder="예: 드립백 자동생산" style="width:100%">
+      </div>
+    </div>
+    <div class="modal-acts">
+      <button class="btn btn-ghost" onclick="closeModal('modalReason')">취소</button>
+      <button class="btn btn-primary" onclick="addReason()">추가</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const SURL='https://flevmhcogrwagyoxcacs.supabase.co';
+const SKEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZsZXZtaGNvZ3J3YWd5b3hjYWNzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIzNDk5ODAsImV4cCI6MjA4NzkyNTk4MH0.eWvh1kjdnG-juv77MMbnmnRSWa22eFP0sZn9r4wHsYg';
+const sb=supabase.createClient(SURL,SKEY);
+
+let teams=[],members=[],overtime=[],reasons=[],otLogs=[];
+let activePage='dashboard';
+const DAYS=['월','화','수','목','금','토','일'];
+const COLORS=['#3b82f6','#10b981','#f59e0b','#f43f5e','#8b5cf6','#06b6d4','#ec4899','#14b8a6'];
+const LIMIT_H=12;
+const now=new Date();
+
+// ── AUTH ──
+async function checkAuth(){
+  const {data:{session}}=await sb.auth.getSession();
+  if(session){
+    showApp(session.user.email);
+  } else {
+    document.getElementById('loginScreen').style.display='flex';
+  }
+}
+
+function showApp(email){
+  document.getElementById('loginScreen').style.display='none';
+  document.getElementById('loginUserEmail').textContent=email||'';
+  init();
+}
+
+async function doLogin(){
+  const email=document.getElementById('loginEmail').value.trim();
+  const pw=document.getElementById('loginPw').value;
+  const errEl=document.getElementById('loginErr');
+  const btn=document.getElementById('loginBtn');
+  if(!email||!pw){ errEl.textContent='이메일과 비밀번호를 입력하세요'; errEl.style.display='block'; return; }
+  btn.textContent='로그인 중...'; btn.disabled=true;
+  const {data,error}=await sb.auth.signInWithPassword({email,password:pw});
+  btn.textContent='로그인'; btn.disabled=false;
+  if(error){
+    errEl.textContent='이메일 또는 비밀번호가 올바르지 않습니다';
+    errEl.style.display='block';
+  } else {
+    errEl.style.display='none';
+    showApp(data.user.email);
+  }
+}
+
+async function doLogout(){
+  await sb.auth.signOut();
+  location.reload();
+}
+
+// ── INIT ──
+async function init(){
+  setConn('loading');
+  try{ await Promise.all([loadTeams(),loadMembers(),loadOT(),loadReasons(),loadLogs()]); setConn('ok'); }
+  catch(e){ setConn('err'); console.error(e); }
+  ['dMonth','otMonth','scMonth'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=now.toISOString().slice(0,7); });
+  initDashYear();
+  renderAll();
+}
+function setConn(s){
+  const d=document.getElementById('connDot'),l=document.getElementById('connLbl');
+  if(s==='ok'){d.className='conn-dot ok';l.textContent='연결됨';}
+  else if(s==='err'){d.className='conn-dot err';l.textContent='오류';}
+  else{d.className='conn-dot';l.textContent='연결중...';}
+}
+async function loadTeams(){const{data}=await sb.from('teams').select('*').order('created_at');teams=data||[];}
+async function loadMembers(){const{data}=await sb.from('members').select('*').order('created_at');members=data||[];}
+async function loadOT(){const{data}=await sb.from('overtime').select('*').order('date',{ascending:false});overtime=data||[];}
+async function loadReasons(){const{data}=await sb.from('ot_reasons').select('*').order('created_at');reasons=data||[];}
+async function loadLogs(){const{data}=await sb.from('ot_logs').select('*').order('created_at',{ascending:false}).limit(200);otLogs=data||[];}
+
+async function downloadAllOT(){
+  const btn=event.target;
+  btn.textContent='⏳ 불러오는 중...'; btn.disabled=true;
+  try{
+    const{data,error}=await sb.from('overtime').select('*').order('date',{ascending:false});
+    if(error) throw error;
+    if(!data?.length){ alert('연장근무 데이터가 없습니다.'); return; }
+
+    const header=['날짜','팀','이름','구분','시작시간','마감시간','연장시간(h)','야간시간(h)','가산수당(h)','사유','비고'];
+    const rows=data.map(o=>{
+      const m=getMember(o.member_id);
+      const t=m?getTeam(m.team_id):null;
+      return [
+        o.date||'',
+        t?.name||'',
+        m?.name||'',
+        m?.role||'',
+        o.start_time||'',
+        o.end_time||'',
+        o.hours??'',
+        o.night_hours??'',
+        o.bonus_hours??'',
+        (o.reason||'').replace(/,/g,'·'),
+        (o.note||'').replace(/,/g,'·'),
+      ];
+    });
+
+    const csv=[header,...rows].map(r=>r.map(v=>`"${v}"`).join(',')).join('\n');
+    const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    const today=new Date().toISOString().slice(0,10);
+    a.href=url; a.download=`연장근무_전체_${today}.csv`;
+    a.click(); URL.revokeObjectURL(url);
+  } catch(e){
+    alert('다운로드 실패: '+e.message);
+  } finally{
+    btn.textContent='⬇️ 전체 다운로드'; btn.disabled=false;
+  }
+}
+
+async function downloadAllLogs(){
+  const btn=event.target;
+  btn.textContent='⏳ 불러오는 중...'; btn.disabled=true;
+  try{
+    // 전체 로그 조회 (limit 없이)
+    const{data,error}=await sb.from('ot_logs').select('*').order('created_at',{ascending:false});
+    if(error) throw error;
+    if(!data?.length){ alert('로그 데이터가 없습니다.'); return; }
+
+    const actionLabel={'INSERT':'입력','UPDATE':'수정','DELETE':'삭제'};
+    const header=['일시','작업','이름','날짜','연장시간(h)','변경자','상세'];
+    const rows=data.map(l=>[
+      l.created_at?.slice(0,19).replace('T',' ')||'',
+      actionLabel[l.action]||l.action||'',
+      l.member_name||'',
+      l.date||'',
+      l.hours!=null?l.hours:'',
+      l.changed_by||'',
+      (l.detail||'').replace(/,/g,'·') // 쉼표 치환
+    ]);
+
+    const csv=[header,...rows].map(r=>r.map(v=>`"${v}"`).join(',')).join('\n');
+    const bom='\uFEFF'; // 한글 깨짐 방지
+    const blob=new Blob([bom+csv],{type:'text/csv;charset=utf-8'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    const today=new Date().toISOString().slice(0,10);
+    a.href=url; a.download=`변경로그_전체_${today}.csv`;
+    a.click(); URL.revokeObjectURL(url);
+  } catch(e){
+    alert('다운로드 실패: '+e.message);
+  } finally{
+    btn.textContent='⬇️ 전체 로그 다운로드'; btn.disabled=false;
+  }
+}
+
+// ── HELPERS ──
+const getTeam=id=>teams.find(t=>t.id===id);
+const getMember=id=>members.find(m=>m.id===id);
+const sameMonth=(d,ym)=>d?.slice(0,7)===ym;
+
+// 시작~마감 → 연장시간만 반환 (하위 호환)
+function calcHours(s,e){
+  if(!s||!e) return 0;
+  const [sh,sm]=s.split(':').map(Number);
+  const [eh,em]=e.split(':').map(Number);
+  let sM=sh*60+sm, eM=eh*60+em;
+  if(eM<=sM) eM+=24*60;
+  return Math.round((eM-sM)/60*2)/2;
+}
+
+// 시작~마감 → {total, night, bonus} 모두 계산
+function calcAllHours(s,e){
+  if(!s||!e) return {total:0,night:0,bonus:0};
+  const [sh,sm]=s.split(':').map(Number);
+  const [eh,em]=e.split(':').map(Number);
+  let sM=sh*60+sm, eM=eh*60+em;
+  if(eM<=sM) eM+=24*60;
+  const total=Math.round((eM-sM)/60*2)/2;
+  // 야간: 22:00(1320)~익일06:00(1800)
+  const overlap=(a1,a2,b1,b2)=>Math.max(0,Math.min(a2,b2)-Math.max(a1,b1));
+  let nightMin=overlap(sM,eM,22*60,30*60)+overlap(sM,eM,22*60+24*60,30*60+24*60);
+  const night=Math.round(nightMin/60*2)/2;
+  const bonus=Math.round(night*0.5*2)/2;
+  return {total,night,bonus};
+}
+
+// 날짜 → 그 주의 월요일(YYYY-MM-DD)
+function getWeekStart(dateStr){
+  const d=new Date(dateStr);
+  const day=d.getDay(); // 0=일
+  const diff=day===0?-6:1-day;
+  d.setDate(d.getDate()+diff);
+  return d.toISOString().slice(0,10);
+}
+
+// 해당 월의 주 목록 [{label,start,end}]
+function getWeeksOfMonth(ym){
+  const [yr,mo]=ym.split('-').map(Number);
+  const weeks=[];
+  const first=new Date(yr,mo-1,1);
+  const last=new Date(yr,mo,0);
+  let cur=new Date(first);
+  // 첫 주 월요일 찾기
+  const fd=cur.getDay();
+  if(fd!==1) cur.setDate(cur.getDate()+(fd===0?1:8-fd));
+  // 첫날 자체가 해당 월에 속한 주 처리
+  const firstMonday=new Date(cur);
+  if(firstMonday>last) return [{label:'1주차',start:first.toISOString().slice(0,10),end:last.toISOString().slice(0,10)}];
+  // 1일이 포함된 주
+  const prevMon=new Date(first);
+  const pfd=prevMon.getDay();
+  prevMon.setDate(prevMon.getDate()+(pfd===0?-6:1-pfd));
+  let wStart=prevMon;
+  let wNum=1;
+  while(wStart<=last){
+    const wEnd=new Date(wStart); wEnd.setDate(wEnd.getDate()+6);
+    const sClamp=wStart<first?first:wStart;
+    const eClamp=wEnd>last?last:wEnd;
+    weeks.push({
+      label:`${wNum}주차 (${sClamp.getMonth()+1}/${sClamp.getDate()}~${eClamp.getDate()})`,
+      start:sClamp.toISOString().slice(0,10),
+      end:eClamp.toISOString().slice(0,10)
+    });
+    wStart=new Date(wStart); wStart.setDate(wStart.getDate()+7);
+    wNum++;
+  }
+  return weeks;
+}
+
+// 멤버의 특정 주 연장시간 합계
+function getMemberWeekH(memberId, weekStart, weekEnd){
+  return overtime.filter(o=>o.member_id===memberId && o.date>=weekStart && o.date<=weekEnd)
+    .reduce((s,o)=>s+(o.hours||0),0);
+}
+
+function teamBadge(tid){
+  const t=getTeam(tid);
+  return t?`<span class="badge" style="background:${t.color}22;color:${t.color}">${t.name}</span>`:'-';
+}
+function statusBadge(s){
+  const m={재직:'b-green',휴직:'b-orange',퇴사:'b-red'};
+  return `<span class="badge ${m[s]||'b-blue'}">${s||'재직'}</span>`;
+}
+
+// ── NAV ──
+function goto(p){
+  activePage=p;
+  document.querySelectorAll('.page').forEach(el=>el.classList.remove('on'));
+  document.getElementById('page-'+p).classList.add('on');
+  document.querySelectorAll('.nav-btn').forEach((b,i)=>b.classList.toggle('on',['dashboard','members','overtime','schedule','settings','password'][i]===p));
+  renderPage(p);
+}
+function renderAll(){ renderSidebar(); renderPage(activePage); }
+function renderPage(p){
+  if(p==='dashboard') renderDash();
+  if(p==='members') renderMembers();
+  if(p==='overtime') renderOTPage();
+  if(p==='schedule') renderSchedule();
+  if(p==='settings') renderSettings();
+}
+
+// ── SIDEBAR ──
+function renderSidebar(){
+  const dv=document.getElementById('dTeam')?.value||'';
+  document.getElementById('teamList').innerHTML=
+    `<div class="team-row ${!dv&&!selectedRole?'on':''}" onclick="backToAll()">
+      <div class="t-dot" style="background:var(--text3)"></div>전체<span class="t-cnt">${members.length}</span></div>`+
+    teams.map(t=>`<div class="team-row ${dv==t.id?'on':''}" onclick="selectTeam(${t.id})">
+      <div class="t-dot" style="background:${t.color}"></div>${t.name}
+      <span class="t-cnt">${members.filter(m=>m.team_id===t.id).length}</span></div>`).join('');
+
+  // 모달 내 팀 드롭다운만 동기화 (dTeam, otTeamSel, mTeamSel)
+  ['dTeam'].forEach(id=>{
+    const el=document.getElementById(id); if(!el) return;
+    const cur=el.value;
+    el.innerHTML='<option value="">전체 팀</option>'+teams.map(t=>`<option value="${t.id}" ${cur==t.id?'selected':''}>${t.name}</option>`).join('');
+  });
+  ['otTeamSel','mTeamSel'].forEach(id=>{
+    const el=document.getElementById(id); if(!el) return;
+    const cur=el.value;
+    el.innerHTML=teams.map(t=>`<option value="${t.id}" ${cur==t.id?'selected':''}>${t.name}</option>`).join('');
+  });
+  // 사유 모달 팀 드롭다운
+  const rTid=document.getElementById('rTeamId');
+  if(rTid){ const c=rTid.value; rTid.innerHTML='<option value="">전체 공통</option>'+teams.map(t=>`<option value="${t.id}" ${c==t.id?'selected':''}>${t.name}</option>`).join(''); }
+}
+
+function selectTeam(id){
+  if(dashView==='year') return;
+  selectedRole=null;
+  ['all','employee','parttime'].forEach(k=>document.getElementById('role-'+k).classList.remove('on'));
+  document.getElementById('dTeam').value=id||'';
+  renderAll();
+}
+
+let dashView='month';
+let selectedRole=null;
+
+function selectRole(role){
+  selectedRole=role;
+  document.getElementById('dTeam').value='';
+  ['all','employee','parttime'].forEach(k=>document.getElementById('role-'+k).classList.remove('on'));
+  if(role==='all')        document.getElementById('role-all').classList.add('on');
+  if(role==='직원')       document.getElementById('role-employee').classList.add('on');
+  if(role==='파트타이머') document.getElementById('role-parttime').classList.add('on');
+  renderAll();
+}
+
+function switchDashView(v){
+  dashView=v;
+  document.getElementById('dViewMonth').classList.toggle('on',v==='month');
+  document.getElementById('dViewYear').classList.toggle('on',v==='year');
+  document.getElementById('dMonth').style.display=v==='month'?'':'none';
+  document.getElementById('dYear').style.display=v==='year'?'':'none';
+  if(v==='year'){
+    if(!selectedRole){
+      document.getElementById('dTeam').value='';
+      document.getElementById('dash-team').style.display='none';
+      document.getElementById('dash-all').style.display='block';
+      renderSidebar();
+    }
+  }
+  renderDash();
+}
+
+function initDashYear(){
+  const yr=now.getFullYear();
+  const el=document.getElementById('dYear');
+  el.innerHTML=Array.from({length:5},(_,i)=>yr-i).map(y=>`<option value="${y}" ${y===yr?'selected':''}>${y}년</option>`).join('');
+}
+
+function renderDash(){
+  const tf=document.getElementById('dTeam').value;
+  if(dashView==='year'){
+    if(selectedRole){ renderDashRoleYear(); return; }
+    renderDashYear(tf);
+    return;
+  }
+  if(selectedRole){ renderDashRole(); return; }
+
+  const ym=document.getElementById('dMonth').value;
+  document.getElementById('dashSub').textContent=`${ym.replace('-','년 ')}월 기준`;
+  document.getElementById('dash-role').style.display='none';
+
+  const fOT=overtime.filter(o=>{
+    if(!sameMonth(o.date,ym)) return false;
+    if(tf){ const m=getMember(o.member_id); if(!m||String(m.team_id)!==tf) return false; }
+    return true;
+  });
+
+  if(!tf){
+    // ── 전체: 팀별 차트 + 사유별 ──
+    document.getElementById('dash-all').style.display='block';
+    document.getElementById('dash-team').style.display='none';
+
+    const fM=members.filter(m=>!tf||String(m.team_id)===tf);
+    const totH=fOT.reduce((s,o)=>s+(o.hours||0),0);
+    document.getElementById('statsGrid').innerHTML=`
+      <div class="stat-card blue"><div class="stat-lbl">전체 인원</div><div class="stat-val blue">${fM.length}</div><div class="stat-desc">재직 ${fM.filter(m=>m.status==='재직').length}명</div></div>
+      <div class="stat-card green"><div class="stat-lbl">연장 건수</div><div class="stat-val green">${fOT.length}</div><div class="stat-desc">해당 월</div></div>
+      <div class="stat-card orange"><div class="stat-lbl">총 연장시간</div><div class="stat-val orange">${totH}h</div></div>
+    `;
+
+    // ── 팀별 Canvas 수직 막대그래프 (비교형) ──
+    document.getElementById('teamChartTitle').textContent='🏢 팀별 연장시간';
+    document.getElementById('teamChartHint').textContent='클릭 → 인원별 상세';
+    document.getElementById('yearTeamCard').style.display='none';
+    const td=teams.map(t=>{
+      const tOT=fOT.filter(o=>{ const m=getMember(o.member_id); return m?.team_id===t.id; });
+      return {t, h:tOT.reduce((s,o)=>s+(o.hours||0),0), cnt:tOT.length};
+    }).sort((a,b)=>b.h-a.h);
+
+    document.getElementById('teamChart').innerHTML=td.length
+      ? `<canvas id="teamBarCanvas" style="width:100%;height:220px"></canvas>`
+      : '<div class="empty"><div class="ei">📊</div>데이터 없음</div>';
+
+    if(td.length){
+      requestAnimationFrame(()=>{
+        const canvas=document.getElementById('teamBarCanvas');
+        if(!canvas) return;
+        const dpr=window.devicePixelRatio||1;
+        const W=canvas.offsetWidth, H=220;
+        canvas.width=W*dpr; canvas.height=H*dpr;
+        const ctx=canvas.getContext('2d');
+        ctx.scale(dpr,dpr);
+
+        const maxH=Math.max(...td.map(d=>d.h),1);
+        const padTop=20, padBottom=48, padSide=16;
+        const chartH=H-padTop-padBottom;
+        const n=td.length;
+        const barW=Math.min(60, (W-padSide*2)/n*0.55);
+        const slotW=(W-padSide*2)/n;
+
+        // 가이드라인 (4개)
+        ctx.strokeStyle='rgba(255,255,255,0.07)';
+        ctx.lineWidth=1;
+        [0.25,0.5,0.75,1].forEach(r=>{
+          const y=padTop+chartH*(1-r);
+          ctx.beginPath(); ctx.moveTo(padSide,y); ctx.lineTo(W-padSide,y); ctx.stroke();
+          const val=Math.round(maxH*r);
+          ctx.fillStyle='rgba(240,236,224,0.35)';
+          ctx.font=`10px JetBrains Mono, monospace`;
+          ctx.textAlign='left'; ctx.textBaseline='middle';
+          ctx.fillText(val+'h', 2, y);
+        });
+
+        td.forEach((d,i)=>{
+          const cx=padSide+slotW*i+slotW/2;
+          const bh=d.h/maxH*chartH;
+          const by=padTop+chartH-bh;
+
+          // 막대 배경
+          ctx.fillStyle='rgba(255,255,255,0.06)';
+          ctx.beginPath();
+          ctx.roundRect(cx-barW/2, padTop, barW, chartH, 4);
+          ctx.fill();
+
+          // 막대
+          if(d.h>0){
+            ctx.fillStyle=d.t.color;
+            ctx.globalAlpha=0.88;
+            ctx.beginPath();
+            ctx.roundRect(cx-barW/2, by, barW, bh, [4,4,0,0]);
+            ctx.fill();
+            ctx.globalAlpha=1;
+
+            // 막대 위 시간
+            ctx.fillStyle='#f5f5f0';
+            ctx.font=`bold 12px JetBrains Mono, monospace`;
+            ctx.textAlign='center'; ctx.textBaseline='bottom';
+            ctx.fillText(d.h+'h', cx, by-3);
+          }
+
+          // 팀명
+          ctx.fillStyle='#e0ddd0';
+          ctx.font=`bold 12px Noto Sans KR, sans-serif`;
+          ctx.textAlign='center'; ctx.textBaseline='top';
+          ctx.fillText(d.t.name, cx, padTop+chartH+8);
+          // 건수
+          ctx.fillStyle='rgba(220,216,200,0.5)';
+          ctx.font=`10px Noto Sans KR, sans-serif`;
+          ctx.fillText(d.cnt+'건', cx, padTop+chartH+24);
+        });
+
+        // 클릭 이벤트
+        canvas.onclick=function(e){
+          const rect=canvas.getBoundingClientRect();
+          const mx=e.clientX-rect.left;
+          td.forEach((d,i)=>{
+            const cx=padSide+slotW*i+slotW/2;
+            if(Math.abs(mx-cx)<slotW/2) selectTeam(d.t.id);
+          });
+        };
+        canvas.style.cursor='pointer';
+        canvas.title='팀 클릭 → 인원별 상세';
+      });
+    }
+
+    // 사유별
+    const rm={};
+    fOT.forEach(o=>{ rm[o.reason]=(rm[o.reason]||0)+(o.hours||0); });
+    const rmMax=Math.max(...Object.values(rm),1);
+    document.getElementById('reasonChart').innerHTML=Object.keys(rm).length
+      ? Object.entries(rm).sort((a,b)=>b[1]-a[1]).map(([r,h],i)=>`
+          <div class="mb"><div class="mb-top"><span>${r}</span><span style="font-family:var(--mono);color:${COLORS[i%8]}">${h}h</span></div>
+          <div class="mb-track"><div class="mb-fill" style="width:${h/rmMax*100}%;background:${COLORS[i%8]}">${h>0?h+'h':''}</div></div></div>`).join('')
+      : '<div class="empty"><div class="ei">📋</div>데이터 없음</div>';
+
+  } else {
+    // ── 팀 선택: 인원별 주간 연장 현황 ──
+    document.getElementById('dash-all').style.display='none';
+    document.getElementById('dash-team').style.display='block';
+
+    const t=getTeam(Number(tf));
+    document.getElementById('teamDetailTitle').textContent=`${t?.name||'팀'} · 주간 연장근무 현황`;
+
+    const weeks=getWeeksOfMonth(ym);
+    // 현재 날짜가 속한 주차 자동 선택
+    const wf=document.getElementById('weekFilter');
+    const todayStr=now.toISOString().slice(0,10);
+    const todayWi=weeks.findIndex(w=>todayStr>=w.start&&todayStr<=w.end);
+    // 이번달이면 현재 주차, 다른 달이면 이전 선택값 유지
+    const isCurrentMonth=ym===now.toISOString().slice(0,7);
+    const prevWf=wf.value;
+    const defaultWi=isCurrentMonth&&todayWi>=0 ? todayWi : (prevWf!==''?Number(prevWf):0);
+    wf.innerHTML=weeks.map((w,i)=>`<option value="${i}" ${i===defaultWi?'selected':''}>${w.label}${isCurrentMonth&&i===todayWi?' ← 이번주':''}</option>`).join('');
+
+    const tMembers=members.filter(m=>m.team_id===Number(tf)&&m.status==='재직');
+    const tOT=overtime.filter(o=>{
+      if(!sameMonth(o.date,ym)) return false;
+      const m=getMember(o.member_id); return m?.team_id===Number(tf);
+    });
+
+    // 팀 요약 통계
+    const totH=tOT.reduce((s,o)=>s+(o.hours||0),0);
+    const overCount=tMembers.filter(m=>{
+      const wi=Number(wf.value)||0;
+      const w=weeks[wi];
+      return w && getMemberWeekH(m.id,w.start,w.end)>LIMIT_H;
+    }).length;
+    const warnCount=tMembers.filter(m=>{
+      const wi=Number(wf.value)||0;
+      const w=weeks[wi];
+      if(!w) return false;
+      const h=getMemberWeekH(m.id,w.start,w.end);
+      return h>=8&&h<=LIMIT_H;
+    }).length;
+
+    document.getElementById('teamStatsGrid').innerHTML=`
+      <div class="stat-card blue"><div class="stat-lbl">팀 인원</div><div class="stat-val blue">${tMembers.length}</div><div class="stat-desc">재직 기준</div></div>
+      <div class="stat-card orange"><div class="stat-lbl">월 총 연장</div><div class="stat-val orange">${totH}h</div><div class="stat-desc">해당 월 합계</div></div>
+      <div class="stat-card orange"><div class="stat-lbl">주의 인원</div><div class="stat-val orange">${warnCount}</div><div class="stat-desc">8h 이상</div></div>
+    `;
+
+    // 사유별 연장시간
+    const rm={};
+    tOT.forEach(o=>{ if(o.reason) rm[o.reason]=(rm[o.reason]||0)+(o.hours||0); });
+    const rmMax=Math.max(...Object.values(rm),1);
+    document.getElementById('teamReasonChart').innerHTML=Object.keys(rm).length
+      ? Object.entries(rm).sort((a,b)=>b[1]-a[1]).map(([r,h],i)=>`
+          <div class="mb">
+            <div class="mb-top">
+              <span>${r}</span>
+              <span style="font-family:var(--mono);color:${COLORS[i%8]};font-weight:700">${h}h</span>
+            </div>
+            <div class="mb-track">
+              <div class="mb-fill" style="width:${h/rmMax*100}%;background:${COLORS[i%8]}">${h>0?h+'h':''}</div>
+            </div>
+          </div>`).join('')
+      : '<div class="empty"><div class="ei">📋</div>사유 데이터 없음</div>';
+
+    renderTeamDetail();
+  }
+}
+
+function renderTeamDetail(){
+  const ym=document.getElementById('dMonth').value;
+  const tf=document.getElementById('dTeam').value;
+  if(!tf) return;
+  const t=getTeam(Number(tf));
+  const weeks=getWeeksOfMonth(ym);
+  const wi=Number(document.getElementById('weekFilter').value)||0;
+  const selWeek=weeks[wi];
+  if(!selWeek) return;
+
+  const tMembers=members.filter(m=>m.team_id===Number(tf)&&m.status==='재직');
+
+  // 선택 주차 인원별 막대그래프
+  const mData=tMembers.map(m=>{
+    const h=getMemberWeekH(m.id,selWeek.start,selWeek.end);
+    return {m,h};
+  }).sort((a,b)=>b.h-a.h);
+  const mx=Math.max(...mData.map(d=>d.h),LIMIT_H,1);
+  const limitPct=LIMIT_H/mx*100;
+
+  document.getElementById('memberWeekChart').innerHTML=`
+    <div style="font-size:11px;color:var(--text3);margin-bottom:14px">
+      📅 <strong>${selWeek.label}</strong> (${selWeek.start} ~ ${selWeek.end})
+      &nbsp;|&nbsp; 🔴 빨간선 = 주 12시간 한도
+    </div>`+
+    mData.map(d=>{
+      const pct=d.h/mx*100;
+      const isOver=d.h>LIMIT_H, isWarn=d.h>=8&&d.h<=LIMIT_H;
+      const barColor=isOver?'var(--red)':isWarn?'var(--orange)':t?.color||'var(--accent)';
+      const tag=isOver
+        ? `<span class="wc-tag tag-over">⚠ 초과</span>`
+        : isWarn
+          ? `<span class="wc-tag tag-warn">주의</span>`
+          : `<span class="wc-tag tag-ok">정상</span>`;
+      return `<div class="mb">
+        <div class="mb-top">
+          <span style="display:flex;align-items:center;gap:8px">
+            <strong>${d.m.name}</strong>
+            <span style="font-size:10px;color:var(--text3)">${d.m.role||''}</span>
+            ${tag}
+          </span>
+          <span style="font-family:var(--mono);font-weight:800;color:${barColor}">${d.h}h <span style="font-size:10px;color:var(--text3);font-weight:400">/ ${LIMIT_H}h</span></span>
+        </div>
+        <div class="mb-track">
+          <div class="mb-fill" style="width:${pct}%;background:${barColor};min-width:${d.h>0?'36px':'0'}">${d.h>0?d.h+'h':''}</div>
+          <div class="mb-limit" style="left:${limitPct}%"></div>
+        </div>
+      </div>`;
+    }).join('')||'<div class="empty"><div class="ei">👤</div>인원 없음</div>';
+
+  // 주차별 전체 테이블
+  const head=`<tr><th>이름</th>${weeks.map((w,i)=>`<th style="${i===wi?'color:var(--accent)':''}">${w.label}</th>`).join('')}<th>월합계</th></tr>`;
+  const body=tMembers.map(m=>{
+    const monthH=overtime.filter(o=>o.member_id===m.id&&sameMonth(o.date,ym)).reduce((s,o)=>s+(o.hours||0),0);
+    const cells=weeks.map((w,i)=>{
+      const h=getMemberWeekH(m.id,w.start,w.end);
+      const isOver=h>LIMIT_H, isWarn=h>=8&&h<=LIMIT_H;
+      const sel=i===wi;
+      return `<td style="font-family:var(--mono);text-align:center;font-weight:${sel?700:400};
+        background:${sel?'rgba(59,130,246,.06)':'transparent'};
+        color:${isOver?'var(--red)':isWarn?'var(--orange)':h>0?'var(--text)':'var(--text3)'}">
+        ${h>0?h+'h':'—'}${isOver?' ⚠':isWarn?' !':''}
+      </td>`;
+    }).join('');
+    return `<tr>
+      <td style="font-weight:700;white-space:nowrap">${m.name}<br><span style="font-size:10px;color:var(--text3);font-weight:400">${m.role||''}</span></td>
+      ${cells}
+      <td style="font-family:var(--mono);font-weight:700;color:var(--accent);text-align:center">${monthH}h</td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('weekTableHead').innerHTML=head;
+  document.getElementById('weekTableBody').innerHTML=body||'<tr><td colspan="99"><div class="empty" style="padding:20px">데이터 없음</div></td></tr>';
+}
+
+function backToAll(){
+  selectedRole=null;
+  ['all','employee','parttime'].forEach(k=>document.getElementById('role-'+k).classList.remove('on'));
+  selectTeam(null);
+}
+
+// ── 구분별 대시보드 (월별) ──
+function renderDashRole(){
+  const ym=document.getElementById('dMonth').value;
+  document.getElementById('dash-all').style.display='none';
+  document.getElementById('dash-team').style.display='none';
+  document.getElementById('dash-role').style.display='block';
+
+  const label=selectedRole==='all'?'전체':selectedRole;
+  document.getElementById('dashSub').textContent=`${label} · ${ym.replace('-','년 ')}월 기준`;
+
+  const targetMembers=selectedRole==='all'
+    ? members
+    : members.filter(m=>m.role===selectedRole);
+  const fOT=overtime.filter(o=>sameMonth(o.date,ym)&&targetMembers.find(m=>m.id===o.member_id));
+  const totH=fOT.reduce((s,o)=>s+(o.hours||0),0);
+
+  document.getElementById('roleStatsGrid').innerHTML=`
+    <div class="stat-card blue"><div class="stat-lbl">${label} 인원</div><div class="stat-val blue">${targetMembers.length}</div></div>
+    <div class="stat-card green"><div class="stat-lbl">연장 건수</div><div class="stat-val green">${fOT.length}</div><div class="stat-desc">해당 월</div></div>
+    <div class="stat-card orange"><div class="stat-lbl">총 연장시간</div><div class="stat-val orange">${totH}h</div></div>
+  `;
+  document.getElementById('roleChartTitle').textContent=`${label} · 인원별 연장시간`;
+
+  drawRoleHBar('roleChart', fOT, selectedRole==='all' ? ['직원','파트타이머'] : [selectedRole]);
+}
+
+// ── 구분별 대시보드 (연간) ──
+function renderDashRoleYear(){
+  const yr=Number(document.getElementById('dYear').value)||now.getFullYear();
+  document.getElementById('dash-all').style.display='none';
+  document.getElementById('dash-team').style.display='none';
+  document.getElementById('dash-role').style.display='block';
+
+  const label=selectedRole==='all'?'전체':selectedRole;
+  document.getElementById('dashSub').textContent=`${label} · ${yr}년 전체 기준`;
+
+  const targetMembers=selectedRole==='all'
+    ? members
+    : members.filter(m=>m.role===selectedRole);
+  const fOT=overtime.filter(o=>o.date?.startsWith(String(yr))&&targetMembers.find(m=>m.id===o.member_id));
+  const totH=fOT.reduce((s,o)=>s+(o.hours||0),0);
+
+  document.getElementById('roleStatsGrid').innerHTML=`
+    <div class="stat-card blue"><div class="stat-lbl">${label} 인원</div><div class="stat-val blue">${targetMembers.length}</div></div>
+    <div class="stat-card green"><div class="stat-lbl">연장 건수</div><div class="stat-val green">${fOT.length}</div><div class="stat-desc">${yr}년 합계</div></div>
+    <div class="stat-card orange"><div class="stat-lbl">총 연장시간</div><div class="stat-val orange">${totH}h</div></div>
+  `;
+  document.getElementById('roleChartTitle').textContent=`${label} · 인원별 연장시간 (${yr}년)`;
+
+  drawRoleHBar('roleChart', fOT, selectedRole==='all' ? ['직원','파트타이머'] : [selectedRole]);
+}
+
+// ── 가로 막대 차트: 직원 그룹 → 파트타이머 그룹 순 ──
+function drawRoleHBar(containerId, fOT, roleOrder){
+  const wrap=document.getElementById(containerId);
+
+  // 구분별 인원 데이터 수집
+  const groups=roleOrder.map(role=>{
+    const mems=members.filter(m=>m.role===role);
+    return {
+      role,
+      color: role==='직원'?'#10b981':'#f59e0b',
+      rows: mems.map(m=>{
+        const h=fOT.filter(o=>o.member_id===m.id).reduce((s,o)=>s+(o.hours||0),0);
+        return {name:m.name, h};
+      }).sort((a,b)=>b.h-a.h)
+    };
+  }).filter(g=>g.rows.length>0);
+
+  if(!groups.length){ wrap.innerHTML='<div class="empty"><div class="ei">📊</div>데이터 없음</div>'; return; }
+
+  const allRows=groups.flatMap(g=>g.rows);
+  const maxH=Math.max(...allRows.map(r=>r.h),1);
+  const BAR_H=28, GAP=6, GROUP_GAP=18, LABEL_W=80, VAL_W=36, PAD=12;
+
+  let html='<div style="padding:8px 0">';
+  groups.forEach(g=>{
+    html+=`<div style="font-size:11px;font-weight:800;color:${g.color};letter-spacing:.5px;padding:6px 0 4px ${LABEL_W+PAD}px">${g.role}</div>`;
+    g.rows.forEach(row=>{
+      const pct=maxH>0?(row.h/maxH*100):0;
+      html+=`
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:${GAP}px">
+          <div style="width:${LABEL_W}px;text-align:right;font-size:12px;font-weight:700;color:var(--text2);flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${row.name}">${row.name}</div>
+          <div style="flex:1;background:rgba(255,255,255,0.05);border-radius:4px;height:${BAR_H}px;position:relative;overflow:hidden">
+            <div style="height:100%;width:${pct}%;background:${g.color};opacity:0.82;border-radius:4px;transition:width .3s;min-width:${row.h>0?4:0}px"></div>
+          </div>
+          <div style="width:${VAL_W}px;font-size:12px;font-weight:800;font-family:var(--mono);color:${row.h>0?g.color:'var(--text3)'};flex-shrink:0">${row.h>0?row.h+'h':'-'}</div>
+        </div>`;
+    });
+    html+=`<div style="height:${GROUP_GAP}px"></div>`;
+  });
+  html+='</div>';
+  wrap.innerHTML=html;
+}
+
+// ── 연간 대시보드 ──
+function renderDashYear(tf){
+  const yr=Number(document.getElementById('dYear').value)||now.getFullYear();
+  document.getElementById('dashSub').textContent=`${yr}년 전체 기준`;
+  document.getElementById('dash-team').style.display='none';
+  document.getElementById('dash-all').style.display='block';
+  document.getElementById('teamChartTitle').textContent='📅 월별 연장시간';
+  document.getElementById('teamChartHint').textContent=`${yr}년 1~12월`;
+
+  const fOT=overtime.filter(o=>{
+    if(!o.date.startsWith(String(yr))) return false;
+    if(tf){ const m=getMember(o.member_id); if(!m||String(m.team_id)!==tf) return false; }
+    return true;
+  });
+  const fM=members;
+  const totH=fOT.reduce((s,o)=>s+(o.hours||0),0);
+  document.getElementById('statsGrid').innerHTML=`
+    <div class="stat-card blue"><div class="stat-lbl">전체 인원</div><div class="stat-val blue">${fM.length}</div></div>
+    <div class="stat-card green"><div class="stat-lbl">연장 건수</div><div class="stat-val green">${fOT.length}</div><div class="stat-desc">${yr}년 합계</div></div>
+    <div class="stat-card orange"><div class="stat-lbl">총 연장시간</div><div class="stat-val orange">${totH}h</div></div>
+  `;
+
+  // 월별 연장시간 Canvas 꺾은선 그래프
+  const months=Array.from({length:12},(_,i)=>{
+    const mo=String(i+1).padStart(2,'0');
+    const ym=`${yr}-${mo}`;
+    const mOT=fOT.filter(o=>o.date.startsWith(ym));
+    return {label:`${i+1}월`, h:mOT.reduce((s,o)=>s+(o.hours||0),0), cnt:mOT.length};
+  });
+
+  document.getElementById('teamChart').innerHTML=
+    `<canvas id="yearBarCanvas" style="width:100%;height:220px"></canvas>`;
+
+  requestAnimationFrame(()=>{
+    const canvas=document.getElementById('yearBarCanvas');
+    if(!canvas) return;
+    const dpr=window.devicePixelRatio||1;
+    const W=canvas.offsetWidth, H=220;
+    canvas.width=W*dpr; canvas.height=H*dpr;
+    const ctx=canvas.getContext('2d');
+    ctx.scale(dpr,dpr);
+
+    const maxH=Math.max(...months.map(m=>m.h),1);
+    const padTop=20,padBottom=40,padSide=16;
+    const chartH=H-padTop-padBottom;
+    const slotW=(W-padSide*2)/12;
+    const barW=Math.min(slotW*0.55,40);
+
+    // 가이드라인
+    [0.25,0.5,0.75,1].forEach(r=>{
+      const y=padTop+chartH*(1-r);
+      ctx.strokeStyle='rgba(255,255,255,0.07)'; ctx.lineWidth=1;
+      ctx.beginPath(); ctx.moveTo(padSide,y); ctx.lineTo(W-padSide,y); ctx.stroke();
+      ctx.fillStyle='rgba(240,236,224,0.35)';
+      ctx.font=`10px JetBrains Mono,monospace`;
+      ctx.textAlign='left'; ctx.textBaseline='middle';
+      ctx.fillText(Math.round(maxH*r)+'h',2,y);
+    });
+
+    months.forEach((m,i)=>{
+      const cx=padSide+slotW*i+slotW/2;
+      const bh=m.h/maxH*chartH;
+      const by=padTop+chartH-bh;
+      const color=`hsl(${200+i*12},60%,55%)`;
+
+      ctx.fillStyle='rgba(255,255,255,0.06)';
+      ctx.beginPath(); ctx.roundRect(cx-barW/2,padTop,barW,chartH,4); ctx.fill();
+
+      if(m.h>0){
+        ctx.fillStyle=color; ctx.globalAlpha=0.85;
+        ctx.beginPath(); ctx.roundRect(cx-barW/2,by,barW,bh,[4,4,0,0]); ctx.fill();
+        ctx.globalAlpha=1;
+        ctx.fillStyle='#f5f5f0'; ctx.font=`bold 10px JetBrains Mono,monospace`;
+        ctx.textAlign='center'; ctx.textBaseline='bottom';
+        ctx.fillText(m.h+'h',cx,by-2);
+      }
+      ctx.fillStyle='#e0ddd0'; ctx.font=`bold 11px Noto Sans KR,sans-serif`;
+      ctx.textAlign='center'; ctx.textBaseline='top';
+      ctx.fillText(m.label,cx,padTop+chartH+6);
+    });
+  });
+
+  // 사유별 (연간)
+  const rm={};
+  fOT.forEach(o=>{ if(o.reason) rm[o.reason]=(rm[o.reason]||0)+(o.hours||0); });
+  const rmMax=Math.max(...Object.values(rm),1);
+  document.getElementById('reasonChart').innerHTML=Object.keys(rm).length
+    ? Object.entries(rm).sort((a,b)=>b[1]-a[1]).map(([r,h],i)=>`
+        <div class="mb">
+          <div class="mb-top"><span>${r}</span><span style="font-family:var(--mono);color:${COLORS[i%8]};font-weight:700">${h}h</span></div>
+          <div class="mb-track"><div class="mb-fill" style="width:${h/rmMax*100}%;background:${COLORS[i%8]}">${h>0?h+'h':''}</div></div>
+        </div>`).join('')
+    : '<div class="empty"><div class="ei">📋</div>데이터 없음</div>';
+
+  // ── 팀별 연장시간 (연간) ──
+  document.getElementById('yearTeamCard').style.display='block';
+  const td=teams.map(t=>{
+    const tOT=fOT.filter(o=>{ const m=getMember(o.member_id); return m?.team_id===t.id; });
+    return {t, h:tOT.reduce((s,o)=>s+(o.hours||0),0), cnt:tOT.length};
+  }).sort((a,b)=>b.h-a.h);
+
+  document.getElementById('yearTeamChart').innerHTML=td.length
+    ? `<canvas id="yearTeamCanvas" style="width:100%;height:220px"></canvas>`
+    : '<div class="empty"><div class="ei">📊</div>데이터 없음</div>';
+
+  if(td.length){
+    requestAnimationFrame(()=>{
+      const canvas=document.getElementById('yearTeamCanvas');
+      if(!canvas) return;
+      const dpr=window.devicePixelRatio||1;
+      const W=canvas.offsetWidth, H=220;
+      canvas.width=W*dpr; canvas.height=H*dpr;
+      const ctx=canvas.getContext('2d');
+      ctx.scale(dpr,dpr);
+
+      const maxH=Math.max(...td.map(d=>d.h),1);
+      const padTop=20,padBottom=48,padSide=16;
+      const chartH=H-padTop-padBottom;
+      const n=td.length;
+      const slotW=(W-padSide*2)/n;
+      const barW=Math.min(60,slotW*0.55);
+
+      [0.25,0.5,0.75,1].forEach(r=>{
+        const y=padTop+chartH*(1-r);
+        ctx.strokeStyle='rgba(255,255,255,0.07)'; ctx.lineWidth=1;
+        ctx.beginPath(); ctx.moveTo(padSide,y); ctx.lineTo(W-padSide,y); ctx.stroke();
+        ctx.fillStyle='rgba(240,236,224,0.35)';
+        ctx.font=`10px JetBrains Mono,monospace`;
+        ctx.textAlign='left'; ctx.textBaseline='middle';
+        ctx.fillText(Math.round(maxH*r)+'h',2,y);
+      });
+
+      td.forEach((d,i)=>{
+        const cx=padSide+slotW*i+slotW/2;
+        const bh=d.h/maxH*chartH;
+        const by=padTop+chartH-bh;
+
+        ctx.fillStyle='rgba(255,255,255,0.06)';
+        ctx.beginPath(); ctx.roundRect(cx-barW/2,padTop,barW,chartH,4); ctx.fill();
+
+        if(d.h>0){
+          ctx.fillStyle=d.t.color; ctx.globalAlpha=0.88;
+          ctx.beginPath(); ctx.roundRect(cx-barW/2,by,barW,bh,[4,4,0,0]); ctx.fill();
+          ctx.globalAlpha=1;
+          ctx.fillStyle='#f5f5f0'; ctx.font=`bold 12px JetBrains Mono,monospace`;
+          ctx.textAlign='center'; ctx.textBaseline='bottom';
+          ctx.fillText(d.h+'h',cx,by-3);
+        }
+        ctx.fillStyle='#e0ddd0'; ctx.font=`bold 12px Noto Sans KR,sans-serif`;
+        ctx.textAlign='center'; ctx.textBaseline='top';
+        ctx.fillText(d.t.name,cx,padTop+chartH+8);
+        ctx.fillStyle='rgba(220,216,200,0.5)'; ctx.font=`10px Noto Sans KR,sans-serif`;
+        ctx.fillText(d.cnt+'건',cx,padTop+chartH+24);
+      });
+    });
+  }
+}
+
+// ── MEMBERS ──
+function getSidebarFilter(){
+  const tid=document.getElementById('dTeam')?.value||'';
+  const role=selectedRole&&selectedRole!=='all'?selectedRole:null;
+  return {tid, role};
+}
+
+function getSidebarLabel(){
+  const {tid,role}=getSidebarFilter();
+  const teamName=tid?teams.find(t=>String(t.id)===tid)?.name:'';
+  if(teamName&&role) return `${teamName} · ${role}`;
+  if(teamName) return teamName;
+  if(role) return role;
+  if(selectedRole==='all') return '전체';
+  return '전체';
+}
+
+function renderMembers(){
+  const {tid,role}=getSidebarFilter();
+  const label=getSidebarLabel();
+  const sub=document.getElementById('memberSub');
+  if(sub) sub.textContent=label;
+
+  const list=members.filter(m=>{
+    if(tid&&String(m.team_id)!==tid) return false;
+    if(role&&m.role!==role) return false;
+    return true;
+  });
+
+  document.getElementById('memberBody').innerHTML=list.length
+    ? list.map(m=>{
+        const t=getTeam(m.team_id);
+        return `<tr>
+          <td><strong>${m.name}</strong></td><td>${teamBadge(m.team_id)}</td>
+          <td style="color:var(--text2)">${m.role||'-'}</td>
+          <td style="font-family:var(--mono)">${m.time_in||'-'}</td>
+          <td style="font-family:var(--mono)">${m.time_out||'-'}</td>
+          <td><div style="display:flex;gap:3px;flex-wrap:wrap">${(m.work_days||[]).map(d=>`<span style="padding:2px 6px;border-radius:4px;font-size:10px;font-weight:700;background:${t?.color||'#3b82f6'}22;color:${t?.color||'#3b82f6'}">${d}</span>`).join('')}</div></td>
+          <td style="font-size:11px;color:var(--text3)">${m.phone||'-'}</td>
+          <td style="white-space:nowrap">
+            <button class="btn btn-sm" style="background:var(--orange);color:#fff;margin-right:4px" onclick="openEditMember(${m.id})">수정</button>
+            <button class="btn btn-danger btn-sm" onclick="deleteMember(${m.id})">삭제</button>
+          </td>
+        </tr>`;
+      }).join('')
+    : '<tr><td colspan="8"><div class="empty"><div class="ei">👤</div>인원 없음</div></td></tr>';
+}
+
+// ── OVERTIME ──
+let activeOTTab='ot';
+
+function switchOTTab(t){
+  activeOTTab=t;
+  ['ot','bonus','log'].forEach(k=>{
+    document.getElementById('stab-'+k).classList.toggle('on',k===t);
+    document.getElementById('subtab-'+k).style.display=k===t?'block':'none';
+  });
+  renderOTPage();
+}
+
+function syncOTMemberFilter(){
+  const {tid, role}=getSidebarFilter();
+  const el=document.getElementById('otMemberF');
+  el.innerHTML='<option value="">전체 인원</option>'+
+    members.filter(m=>{
+      if(tid&&String(m.team_id)!==tid) return false;
+      if(role&&m.role!==role) return false;
+      return true;
+    }).map(m=>`<option value="${m.id}">${m.name}</option>`).join('');
+}
+
+function renderOTPage(){
+  const {tid, role}=getSidebarFilter();
+  const label=getSidebarLabel();
+  const sub=document.getElementById('otSub');
+  if(sub) sub.textContent=label;
+
+  syncOTMemberFilter();
+
+  const mf=document.getElementById('otMemberF').value;
+  const ym=document.getElementById('otMonth').value;
+  const fOT=overtime.filter(o=>{
+    if(!sameMonth(o.date,ym)) return false;
+    const m=getMember(o.member_id); if(!m) return false;
+    if(tid&&String(m.team_id)!==tid) return false;
+    if(role&&m.role!==role) return false;
+    if(mf&&String(o.member_id)!==mf) return false;
+    return true;
+  });
+  const totH=fOT.reduce((s,o)=>s+(o.hours||0),0);
+  const totN=fOT.reduce((s,o)=>s+(o.night_hours||0),0);
+  const totB=fOT.reduce((s,o)=>s+(o.bonus_hours||0),0);
+  const uniM=new Set(fOT.map(o=>o.member_id)).size;
+  document.getElementById('otStats').innerHTML=`
+    <div class="stat-card blue"><div class="stat-lbl">연장 건수</div><div class="stat-val blue">${fOT.length}</div></div>
+    <div class="stat-card green"><div class="stat-lbl">총 연장시간</div><div class="stat-val green">${totH}h</div></div>
+    <div class="stat-card orange"><div class="stat-lbl">총 야간시간</div><div class="stat-val orange">${totN}h</div><div class="stat-desc">22~06시</div></div>
+    <div class="stat-card red"><div class="stat-lbl">총 가산수당</div><div class="stat-val red">+${totB}h</div><div class="stat-desc">야간 × 0.5</div></div>
+  `;
+
+  // ── 연장근무 탭: 야간/가산 없이 심플하게 ──
+  document.getElementById('otBody').innerHTML=fOT.length
+    ? fOT.map(o=>{
+        const m=getMember(o.member_id);
+        const ws=getWeekStart(o.date);
+        const we=new Date(ws); we.setDate(we.getDate()+6);
+        const wTotal=getMemberWeekH(o.member_id,ws,we.toISOString().slice(0,10));
+        const isOver=wTotal>LIMIT_H;
+        return `<tr>
+          <td style="font-family:var(--mono);font-size:11px">${o.date}</td>
+          <td>${teamBadge(m?.team_id)}</td>
+          <td><strong>${m?.name||'-'}</strong></td>
+          <td style="font-family:var(--mono)">${o.start_time||'-'}</td>
+          <td style="font-family:var(--mono)">${o.end_time||'-'}</td>
+          <td style="font-family:var(--mono);font-weight:700;color:var(--accent)">${o.hours||0}h${isOver?` <span class="badge b-red" style="font-size:9px">주${wTotal}h ⚠</span>`:''}</td>
+          <td><span class="badge b-blue">${o.reason||'-'}</span></td>
+          <td style="font-size:11px;color:var(--text2)">${o.note||'-'}</td>
+          <td style="white-space:nowrap">
+            <button class="btn btn-sm" style="background:var(--accent);color:#fff;margin-right:4px" onclick="copyOT(${o.id})">복사</button>
+            <button class="btn btn-sm" style="background:var(--orange);color:#fff;margin-right:4px" onclick="openEditOT(${o.id})">수정</button>
+            <button class="btn btn-danger btn-sm" onclick="deleteOT(${o.id})">삭제</button>
+          </td>
+        </tr>`;
+      }).join('')
+    : '<tr><td colspan="9"><div class="empty"><div class="ei">⏱</div>연장근무 없음</div></td></tr>';
+
+  // ── 야간 가산수당 탭 ──
+  const nOT=fOT.filter(o=>(o.night_hours||0)>0);
+  document.getElementById('bonusBody').innerHTML=nOT.length
+    ? nOT.map(o=>{
+        const m=getMember(o.member_id);
+        const nh=o.night_hours||0, bh=o.bonus_hours||0;
+        return `<tr>
+          <td style="font-family:var(--mono);font-size:11px">${o.date}</td>
+          <td>${teamBadge(m?.team_id)}</td>
+          <td><strong>${m?.name||'-'}</strong></td>
+          <td style="font-family:var(--mono)">${o.start_time||'-'}</td>
+          <td style="font-family:var(--mono)">${o.end_time||'-'}</td>
+          <td style="font-family:var(--mono);color:var(--orange);font-weight:700">${nh}h</td>
+          <td style="font-family:var(--mono);color:var(--red);font-weight:700">+${bh}h</td>
+          <td style="font-size:11px;color:var(--text2)">${o.note||'-'}</td>
+        </tr>`;
+      }).join('')
+    : '<tr><td colspan="8"><div class="empty"><div class="ei">🌙</div>야간근무 없음</div></td></tr>';
+
+  // ── 변경 로그 탭 ──
+  const actionLabel={'INSERT':'✅ 입력','UPDATE':'✏️ 수정','DELETE':'🗑️ 삭제'};
+  const actionColor={'INSERT':'var(--green)','UPDATE':'var(--orange)','DELETE':'var(--red)'};
+  document.getElementById('logBody').innerHTML=otLogs.length
+    ? otLogs.map(l=>`<tr>
+        <td style="font-family:var(--mono);font-size:11px;white-space:nowrap">${l.created_at?.slice(0,16).replace('T',' ')||'-'}</td>
+        <td><span class="badge" style="background:${actionColor[l.action]}22;color:${actionColor[l.action]};font-weight:800">${actionLabel[l.action]||l.action}</span></td>
+        <td><strong>${l.member_name||'-'}</strong></td>
+        <td style="font-family:var(--mono)">${l.date||'-'}</td>
+        <td style="font-family:var(--mono);font-weight:700;color:var(--accent)">${l.hours!=null?l.hours+'h':'-'}</td>
+        <td style="font-size:11px;color:var(--text3)">${l.changed_by||'-'}</td>
+        <td style="font-size:11px;color:var(--text2)">${l.detail||'-'}</td>
+      </tr>`).join('')
+    : '<tr><td colspan="7"><div class="empty"><div class="ei">📝</div>로그 없음</div></td></tr>';
+}
+
+// ── SCHEDULE ──
+function renderSchedule(){
+  const {tid, role}=getSidebarFilter();
+  const label=getSidebarLabel();
+  const sub=document.getElementById('schedSub');
+  if(sub) sub.textContent=label;
+
+  const ym=document.getElementById('scMonth').value;
+  const[yr,mo]=ym.split('-').map(Number);
+  const days=new Date(yr,mo,0).getDate();
+  const mList=members.filter(m=>{
+    if(tid&&String(m.team_id)!==tid) return false;
+    if(role&&m.role!==role) return false;
+    return true;
+  });
+  const KDAYS=['일','월','화','수','목','금','토'];
+  if(!mList.length){document.getElementById('schedGrid').innerHTML='<div class="empty"><div class="ei">📅</div>표시할 인원 없음</div>';return;}
+  const hds=Array.from({length:days},(_,i)=>{
+    const d=new Date(yr,mo-1,i+1);
+    const we=d.getDay()===0||d.getDay()===6;
+    return `<th style="text-align:center;min-width:32px;${we?'color:var(--red)':''}">${i+1}<br><span style="font-size:9px">${KDAYS[d.getDay()]}</span></th>`;
+  }).join('');
+  const rows=mList.map(m=>{
+    const t=getTeam(m.team_id);
+    const cells=Array.from({length:days},(_,i)=>{
+      const d=new Date(yr,mo-1,i+1);
+      const dn=KDAYS[d.getDay()];
+      const works=(m.work_days||[]).includes(dn);
+      const ds=`${yr}-${String(mo).padStart(2,'0')}-${String(i+1).padStart(2,'0')}`;
+      const ot=overtime.find(o=>o.member_id===m.id&&o.date===ds);
+      if(!works) return `<td style="background:rgba(0,0,0,.25);color:var(--text3)">—</td>`;
+      if(ot) return `<td><span style="background:${t?.color||'#3b82f6'}33;color:${t?.color||'#3b82f6'};border-radius:4px;padding:2px 4px;font-size:10px;font-weight:700" title="${ot.reason} ${ot.hours}h">OT</span></td>`;
+      return `<td style="color:var(--green)">✓</td>`;
+    }).join('');
+    return `<tr><td class="s-sticky1" style="font-weight:700">${m.name}</td>
+      <td class="s-sticky2">${t?`<span class="badge" style="background:${t.color}22;color:${t.color}">${t.name}</span>`:'-'}</td>
+      ${cells}</tr>`;
+  }).join('');
+  document.getElementById('schedGrid').innerHTML=`<table>
+    <thead><tr><th class="s-th1">이름</th><th class="s-th2">팀</th>${hds}</tr></thead>
+    <tbody>${rows}</tbody></table>`;
+}
+
+// ── SETTINGS ──
+let selectedSettingTeam=null;
+function switchSettingTab(){}
+
+function openAddReason(){
+  document.getElementById('rLabel').value='';
+  const el=document.getElementById('rTeamId');
+  el.innerHTML='<option value="">전체 공통</option>'+
+    teams.map(t=>`<option value="${t.id}" ${selectedSettingTeam&&String(t.id)===String(selectedSettingTeam)?'selected':''}>${t.name}</option>`).join('');
+  openModal('modalReason');
+}
+
+function selectSettingTeam(id){
+  selectedSettingTeam=id;
+  renderSettings();
+}
+
+function renderSettings(){
+  // 팀 목록 렌더
+  const tl=document.getElementById('teamSettingList');
+  if(tl) tl.innerHTML=teams.length
+    ? teams.map(t=>`
+        <div onclick="selectSettingTeam(${t.id})" style="display:flex;align-items:center;justify-content:space-between;padding:9px 10px;border-radius:8px;cursor:pointer;margin-bottom:2px;background:${String(selectedSettingTeam)===String(t.id)?'rgba(59,130,246,.12)':'transparent'};border:1.5px solid ${String(selectedSettingTeam)===String(t.id)?'var(--accent)':'transparent'}">
+          <span style="display:flex;align-items:center;gap:7px;font-size:13px;font-weight:700">
+            <span style="width:9px;height:9px;border-radius:50%;background:${t.color};flex-shrink:0"></span>${t.name}
+          </span>
+          <button class="btn btn-danger btn-sm" style="padding:2px 7px;font-size:10px" onclick="event.stopPropagation();deleteTeam(${t.id})">삭제</button>
+        </div>`).join('')
+    : '<div style="color:var(--text3);font-size:12px;padding:8px">팀 없음</div>';
+
+  // 사유 패널
+  const title=document.getElementById('reasonPanelTitle');
+  const addBtn=document.getElementById('reasonAddBtn');
+  const rl=document.getElementById('reasonList');
+  if(!rl) return;
+
+  if(!selectedSettingTeam){
+    if(title) title.textContent='← 팀을 선택하세요';
+    if(addBtn) addBtn.style.display='none';
+    rl.innerHTML='<div class="empty" style="padding:24px 0"><div class="ei">👈</div>왼쪽에서 팀을 선택하면<br>해당 팀의 연장사유가 표시됩니다</div>';
+    return;
+  }
+
+  const team=teams.find(t=>String(t.id)===String(selectedSettingTeam));
+  if(!team) return;
+  if(title) title.textContent=`${team.name} 연장사유`;
+  if(addBtn) addBtn.style.display='';
+
+  const tr=reasons.filter(r=>String(r.team_id)===String(team.id));
+  rl.innerHTML=tr.length
+    ? tr.map(r=>`
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)">
+          <span style="font-size:13px;font-weight:600">${r.label}</span>
+          <button class="btn btn-danger btn-sm" onclick="deleteReason(${r.id})">삭제</button>
+        </div>`).join('')
+    : '<div style="color:var(--text3);font-size:12px;padding:12px 0">등록된 사유 없음</div>';
+}
+
+function reasonRow(r){
+  return `<div style="display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--border)">
+    <span style="font-size:13px;font-weight:600">${r.label}</span>
+    <button class="btn btn-danger btn-sm" onclick="deleteReason(${r.id})">삭제</button>
+  </div>`;
+}
+
+async function deleteTeam(id){
+  if(!confirm('팀을 삭제하시겠습니까?\n소속 인원과 데이터에 영향이 있을 수 있습니다.')) return;
+  await sb.from('teams').delete().eq('id',id);
+  if(String(selectedSettingTeam)===String(id)) selectedSettingTeam=null;
+  await loadTeams(); renderAll();
+}
+
+// ── 시간 드롭다운 옵션 생성 (00:00~24:00, 30분 단위) ──
+function buildTimeOptions(){
+  const opts=['<option value="">-- 선택 --</option>'];
+  for(let h=0;h<=23;h++){
+    for(let m=0;m<60;m+=30){
+      const hh=String(h).padStart(2,'0');
+      const mm=String(m).padStart(2,'0');
+      opts.push(`<option value="${hh}:${mm}">${hh}:${mm}</option>`);
+    }
+  }
+  opts.push('<option value="24:00">24:00</option>');
+  return opts.join('');
+}
+
+// ── 야간 구간만 자동계산 (연장시간은 직접입력) ──
+function calcNightHours(s,e){
+  if(!s||!e||s==='-- 선택 --'||e==='-- 선택 --') return {night:0,bonus:0};
+  const toMin=t=>{ const[h,m]=t.split(':').map(Number); return h*60+m; };
+  let sM=toMin(s), eM=toMin(e);
+  if(eM<=sM) eM+=24*60; // 익일
+  // 야간: 22:00(1320)~익일06:00(1800)
+  const overlap=(a1,a2,b1,b2)=>Math.max(0,Math.min(a2,b2)-Math.max(a1,b1));
+  let nMin=overlap(sM,eM,22*60,30*60)+overlap(sM,eM,22*60+24*60,30*60+24*60);
+  const night=Math.round(nMin/60*2)/2;
+  const bonus=Math.round(night*0.5*2)/2;
+  return {night,bonus};
+}
+
+function calcOT(){
+  const s=document.getElementById('otStart').value;
+  const e=document.getElementById('otEnd').value;
+  const directH=parseFloat(document.getElementById('otHourDirect').value)||0;
+
+  // 연장시간 표시 (직접입력 반영)
+  const el=document.getElementById('cv-total');
+  el.textContent=directH>0?directH+'h':'—';
+  el.style.color=directH>0?'var(--accent)':'var(--text3)';
+
+  // 야간/가산 → 시작·마감 기준 자동계산
+  const {night,bonus}=calcNightHours(s,e);
+  document.getElementById('cv-night').textContent=night>0?night+'h':'없음';
+  document.getElementById('cv-night').style.color=night>0?'var(--orange)':'var(--text3)';
+  document.getElementById('cv-bonus').textContent=bonus>0?'+'+bonus+'h':'없음';
+  document.getElementById('cv-bonus').style.color=bonus>0?'var(--red)':'var(--text3)';
+}
+
+function calcOTDirect(){ calcOT(); } // 직접입력 변경 시에도 동일 함수 호출
+
+// ── CRUD ──
+async function addTeam(){
+  const name=document.getElementById('tName').value.trim();
+  const color=document.getElementById('tColor').value;
+  if(!name) return alert('팀 이름을 입력하세요');
+  await sb.from('teams').insert({name,color});
+  await loadTeams(); closeModal('modalTeam');
+  document.getElementById('tName').value='';
+  renderAll();
+}
+
+function openAddMember(){
+  document.getElementById('modalMemberTitle').textContent='인원 추가';
+  document.getElementById('mEditId').value='';
+  document.getElementById('mName').value='';
+  document.getElementById('mPhone').value='';
+  document.getElementById('mIn').value='08:00';
+  document.getElementById('mOut').value='17:00';
+  document.getElementById('mRole').value='직원';
+  document.getElementById('mDays').innerHTML=DAYS.map(d=>`<div class="day-chip ${['월','화','수','목','금'].includes(d)?'on':''}" onclick="this.classList.toggle('on')">${d}</div>`).join('');
+  openModal('modalMember');
+}
+
+function openEditMember(id){
+  const m=members.find(x=>x.id===id);
+  if(!m) return;
+  document.getElementById('modalMemberTitle').textContent='인원 수정';
+  document.getElementById('mEditId').value=id;
+  document.getElementById('mName').value=m.name||'';
+  document.getElementById('mPhone').value=m.phone||'';
+  document.getElementById('mIn').value=m.time_in||'08:00';
+  document.getElementById('mOut').value=m.time_out||'17:00';
+  // 팀 선택
+  const teamSel=document.getElementById('mTeamSel');
+  if(teamSel) teamSel.value=m.team_id||'';
+  // 구분 선택
+  const roleSel=document.getElementById('mRole');
+  if(roleSel) roleSel.value=m.role||'직원';
+  // 근무요일
+  document.getElementById('mDays').innerHTML=DAYS.map(d=>`<div class="day-chip ${(m.work_days||[]).includes(d)?'on':''}" onclick="this.classList.toggle('on')">${d}</div>`).join('');
+  openModal('modalMember');
+}
+
+async function saveMember(){
+  const name=document.getElementById('mName').value.trim();
+  if(!name) return alert('이름을 입력하세요');
+  const days=[...document.querySelectorAll('#mDays .day-chip.on')].map(c=>c.textContent);
+  const payload={
+    name,
+    team_id:Number(document.getElementById('mTeamSel').value),
+    role:document.getElementById('mRole').value,
+    phone:document.getElementById('mPhone').value,
+    time_in:document.getElementById('mIn').value,
+    time_out:document.getElementById('mOut').value,
+    work_days:days,
+  };
+  const editId=document.getElementById('mEditId').value;
+  if(editId){
+    const {error}=await sb.from('members').update(payload).eq('id',Number(editId));
+    if(error) return alert('수정 실패: '+error.message);
+  } else {
+    const {error}=await sb.from('members').insert(payload);
+    if(error) return alert('저장 실패: '+error.message);
+  }
+  await loadMembers(); closeModal('modalMember'); renderAll();
+}
+
+async function deleteMember(id){
+  if(!confirm('삭제하시겠습니까?')) return;
+  await sb.from('members').delete().eq('id',id);
+  await loadMembers(); renderAll();
+}
+
+// ── 로그 기록 ──
+async function writeLog(action, otId, memberName, date, hours, detail){
+  const {data:{user}}=await sb.auth.getUser();
+  await sb.from('ot_logs').insert({
+    action, ot_id:otId,
+    member_name:memberName,
+    date, hours,
+    changed_by:user?.email||'unknown',
+    detail,
+  });
+  await loadLogs();
+}
+
+// ── 일괄 입력 ──
+function openBulkOT(){
+  document.getElementById('bulkDate').value=now.toISOString().slice(0,10);
+  document.getElementById('bulkHours').value='';
+  document.getElementById('bulkNote').value='';
+  const timeOpts=buildTimeOptions();
+  document.getElementById('bulkStart').innerHTML=timeOpts;
+  document.getElementById('bulkEnd').innerHTML=timeOpts;
+  // 팀 필터 드롭다운 (전체 포함)
+  const tf=document.getElementById('bulkTeamFilter');
+  tf.innerHTML='<option value="">전체 팀</option>'+
+    teams.map(t=>`<option value="${t.id}">${t.name}</option>`).join('');
+  // 사유 (전체 공통)
+  document.getElementById('bulkReason').innerHTML=
+    reasons.map(r=>`<option>${r.label}</option>`).join('') || '<option value="">사유 없음</option>';
+  updateBulkMembers();
+  openModal('modalBulkOT');
+}
+
+function updateBulkMembers(){
+  const tid=document.getElementById('bulkTeamFilter').value;
+  // 팀 필터에 따라 사유도 갱신
+  const filteredR=reasons.filter(r=>!tid||!r.team_id||String(r.team_id)===tid);
+  document.getElementById('bulkReason').innerHTML=filteredR.length
+    ? filteredR.map(r=>`<option>${r.label}</option>`).join('')
+    : '<option value="">사유 없음</option>';
+  // 인원: 팀 선택 시 해당 팀만, 전체면 팀별 그룹핑
+  const filtered=members.filter(m=>!tid||String(m.team_id)===tid);
+  if(!tid){
+    // 팀별 그룹핑
+    let html='';
+    teams.forEach(t=>{
+      const tMems=filtered.filter(m=>m.team_id===t.id);
+      if(!tMems.length) return;
+      html+=`<div style="width:100%;font-size:10px;font-weight:800;color:${t.color};padding:4px 4px 2px;letter-spacing:.5px">
+        <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${t.color};margin-right:4px"></span>${t.name}
+      </div>`;
+      html+=tMems.map(m=>`
+        <label onclick="updateBulkCount()" style="display:flex;align-items:center;gap:6px;padding:7px 12px;border-radius:8px;background:rgba(255,255,255,.05);cursor:pointer;font-size:13px;font-weight:700;user-select:none">
+          <input type="checkbox" class="bulk-chk" value="${m.id}" style="width:15px;height:15px;accent-color:var(--accent)">
+          ${m.name}<span style="font-size:10px;color:var(--text3);font-weight:400">${m.role||''}</span>
+        </label>`).join('');
+    });
+    document.getElementById('bulkMemberList').innerHTML=html||'<div style="color:var(--text3);font-size:12px;padding:8px">인원 없음</div>';
+  } else {
+    document.getElementById('bulkMemberList').innerHTML=filtered.length
+      ? filtered.map(m=>`
+          <label onclick="updateBulkCount()" style="display:flex;align-items:center;gap:6px;padding:7px 12px;border-radius:8px;background:rgba(255,255,255,.05);cursor:pointer;font-size:13px;font-weight:700;user-select:none">
+            <input type="checkbox" class="bulk-chk" value="${m.id}" style="width:15px;height:15px;accent-color:var(--accent)">
+            ${m.name}<span style="font-size:10px;color:var(--text3);font-weight:400">${m.role||''}</span>
+          </label>`).join('')
+      : '<div style="color:var(--text3);font-size:12px;padding:8px">인원 없음</div>';
+  }
+  updateBulkCount();
+}
+
+function updateBulkCount(){
+  const cnt=document.querySelectorAll('.bulk-chk:checked').length;
+  document.getElementById('bulkSelectedCount').textContent=cnt;
+}
+
+function bulkSelectAll(v){
+  document.querySelectorAll('.bulk-chk').forEach(el=>el.checked=v);
+  updateBulkCount();
+}
+
+function calcBulkOT(){} // 필요 시 자동계산 연결 가능
+
+async function saveBulkOT(){
+  const date=document.getElementById('bulkDate').value;
+  if(!date) return alert('날짜를 입력하세요');
+  const hours=parseFloat(document.getElementById('bulkHours').value);
+  if(!hours||hours<=0) return alert('연장시간을 입력하세요');
+  const start=document.getElementById('bulkStart').value;
+  const end=document.getElementById('bulkEnd').value;
+  const reason=document.getElementById('bulkReason').value;
+  const note=document.getElementById('bulkNote').value;
+  const checked=[...document.querySelectorAll('.bulk-chk:checked')].map(el=>Number(el.value));
+  if(!checked.length) return alert('인원을 1명 이상 선택하세요');
+  const {night,bonus}=calcNightHours(start,end);
+  const rows=checked.map(mid=>({
+    member_id:mid, date, start_time:start||null, end_time:end||null,
+    hours, night_hours:night, bonus_hours:bonus, reason, note
+  }));
+  const {data,error}=await sb.from('overtime').insert(rows).select();
+  if(error) return alert('저장 실패: '+error.message);
+  for(const row of (data||[])){
+    const m=getMember(row.member_id);
+    await writeLog('INSERT', row.id, m?.name||'', row.date, row.hours, `일괄입력`);
+  }
+  await loadOT(); closeModal('modalBulkOT'); renderAll();
+  alert(`✅ ${checked.length}명 저장 완료!`);
+}
+
+// ── 행 복사 ──
+function copyOT(id){
+  const o=overtime.find(x=>x.id===id);
+  if(!o) return;
+  const m=getMember(o.member_id);
+  if(!m) return;
+
+  // 개별 입력 모달 열고 값 채우기
+  openAddOT();
+
+  // 팀 설정
+  const ts=document.getElementById('otTeamSel');
+  if(ts){ ts.value=m.team_id; updateOTMembers(); }
+  // 인원 설정
+  setTimeout(()=>{
+    const ms=document.getElementById('otMemberSel');
+    if(ms) ms.value=o.member_id;
+    // 날짜: 오늘로
+    document.getElementById('otDate').value=now.toISOString().slice(0,10);
+    // 시간
+    const so=document.getElementById('otStart'); if(so&&o.start_time) so.value=o.start_time;
+    const eo=document.getElementById('otEnd'); if(eo&&o.end_time) eo.value=o.end_time;
+    // 연장시간
+    document.getElementById('otHourDirect').value=o.hours||'';
+    // 사유
+    const rEl=document.getElementById('otReason');
+    if(rEl) [...rEl.options].forEach(opt=>{ if(opt.value===o.reason||opt.text===o.reason) opt.selected=true; });
+    // 비고
+    document.getElementById('otNote').value=o.note||'';
+    calcOT();
+  }, 50);
+}
+
+function openAddOT(){
+  document.getElementById('otDate').value=now.toISOString().slice(0,10);
+  const timeOpts=buildTimeOptions();
+  document.getElementById('otStart').innerHTML=timeOpts;
+  document.getElementById('otEnd').innerHTML=timeOpts;
+  document.getElementById('otHourDirect').value='';
+  document.getElementById('otNote').value='';
+  ['cv-total','cv-night','cv-bonus'].forEach(id=>{
+    document.getElementById(id).textContent='—';
+    document.getElementById(id).style.color='var(--text3)';
+  });
+  updateOTMembers();
+  openModal('modalOT');
+}
+
+function updateOTMembers(){
+  const tid=document.getElementById('otTeamSel').value;
+  document.getElementById('otMemberSel').innerHTML=
+    members.filter(m=>String(m.team_id)===String(tid)).map(m=>`<option value="${m.id}">${m.name}</option>`).join('');
+  // 사유: 해당 팀 사유 + 공통 사유
+  const filtered=reasons.filter(r=>!r.team_id||String(r.team_id)===String(tid));
+  document.getElementById('otReason').innerHTML=
+    filtered.length ? filtered.map(r=>`<option>${r.label}</option>`).join('')
+    : '<option value="">사유 없음</option>';
+  calcOT();
+}
+
+async function saveOT(){
+  const midStr=document.getElementById('otMemberSel').value;
+  if(!midStr) return alert('인원을 선택하세요');
+  const mid=Number(midStr);
+  const h=parseFloat(document.getElementById('otHourDirect').value);
+  if(!h||h<=0) return alert('연장시간을 입력하세요');
+  const s=document.getElementById('otStart').value;
+  const e=document.getElementById('otEnd').value;
+  const {night,bonus}=calcNightHours(s,e);
+  const payload={
+    date:document.getElementById('otDate').value,
+    member_id:mid,
+    start_time:s||null, end_time:e||null,
+    hours:h, night_hours:night, bonus_hours:bonus,
+    reason:document.getElementById('otReason').value||null,
+    note:document.getElementById('otNote').value||null,
+  };
+  const {data,error}=await sb.from('overtime').insert(payload).select().single();
+  if(error){ console.error('저장 오류:', error); return alert('저장 실패: '+error.message); }
+  const mName=getMember(mid)?.name||'';
+  await writeLog('INSERT', data.id, mName, payload.date, h, `사유:${payload.reason||'-'} 비고:${payload.note||'-'}`);
+  await loadOT(); closeModal('modalOT'); renderAll();
+}
+
+async function deleteOT(id){
+  if(!confirm('삭제하시겠습니까?')) return;
+  const o=overtime.find(x=>x.id===id);
+  const mName=getMember(o?.member_id)?.name||'';
+  await sb.from('overtime').delete().eq('id',id);
+  await writeLog('DELETE', id, mName, o?.date, o?.hours, `삭제됨`);
+  await loadOT(); renderAll();
+}
+
+// ── OT 수정 ──
+function openEditOT(id){
+  const o=overtime.find(x=>x.id===id);
+  if(!o) return;
+  const m=getMember(o.member_id);
+  document.getElementById('editOtId').value=id;
+  document.getElementById('editOtDate').value=o.date||'';
+  document.getElementById('editOtHour').value=o.hours||'';
+  document.getElementById('editOtNote').value=o.note||'';
+  document.getElementById('editOtChangeReason').value='';
+
+  // 팀/멤버 드롭다운
+  const teamOpts=teams.map(t=>`<option value="${t.id}" ${t.id===m?.team_id?'selected':''}>${t.name}</option>`).join('');
+  document.getElementById('editOtTeamSel').innerHTML=teamOpts;
+  updateEditOTMembers(o.member_id);
+
+  // 시간 드롭다운
+  const timeOpts=buildTimeOptions();
+  document.getElementById('editOtStart').innerHTML=timeOpts;
+  document.getElementById('editOtEnd').innerHTML=timeOpts;
+  if(o.start_time) document.getElementById('editOtStart').value=o.start_time;
+  if(o.end_time) document.getElementById('editOtEnd').value=o.end_time;
+
+  // 사유: 해당 팀 + 공통
+  const tid=m?.team_id;
+  const filteredR=reasons.filter(r=>!r.team_id||String(r.team_id)===String(tid));
+  document.getElementById('editOtReason').innerHTML=filteredR.map(r=>`<option ${r.label===o.reason?'selected':''}>${r.label}</option>`).join('');
+
+  openModal('modalEditOT');
+}
+
+function updateEditOTMembers(selectedMid){
+  const tid=document.getElementById('editOtTeamSel').value;
+  document.getElementById('editOtMemberSel').innerHTML=
+    members.filter(m=>String(m.team_id)===String(tid))
+      .map(m=>`<option value="${m.id}" ${m.id===selectedMid?'selected':''}>${m.name}</option>`).join('');
+}
+
+async function updateOT(){
+  const id=Number(document.getElementById('editOtId').value);
+  const changeReason=document.getElementById('editOtChangeReason').value.trim();
+  if(!changeReason) return alert('수정 사유를 입력하세요');
+  const midStr=document.getElementById('editOtMemberSel').value;
+  if(!midStr) return alert('인원을 선택하세요');
+  const h=parseFloat(document.getElementById('editOtHour').value);
+  if(!h||h<=0) return alert('연장시간을 입력하세요');
+
+  const s=document.getElementById('editOtStart').value;
+  const e=document.getElementById('editOtEnd').value;
+  const {night,bonus}=calcNightHours(s,e);
+
+  // 수정 전 값 기록
+  const before=overtime.find(x=>x.id===id);
+  const mName=getMember(Number(midStr))?.name||'';
+
+  const payload={
+    date:document.getElementById('editOtDate').value,
+    member_id:Number(midStr),
+    start_time:s||null, end_time:e||null,
+    hours:h, night_hours:night, bonus_hours:bonus,
+    reason:document.getElementById('editOtReason').value||null,
+    note:document.getElementById('editOtNote').value||null,
+  };
+  const {error}=await sb.from('overtime').update(payload).eq('id',id);
+  if(error){ return alert('수정 실패: '+error.message); }
+
+  const detail=`수정사유:${changeReason} | 변경전:${before?.hours}h→${h}h, ${before?.date}→${payload.date}`;
+  await writeLog('UPDATE', id, mName, payload.date, h, detail);
+  await loadOT(); closeModal('modalEditOT'); renderAll();
+}
+
+async function changePassword(){
+  const current=document.getElementById('pwCurrent').value;
+  const newPw=document.getElementById('pwNew').value;
+  const confirm=document.getElementById('pwConfirm').value;
+  const msgEl=document.getElementById('pwMsg');
+
+  const showMsg=(text,ok)=>{
+    msgEl.textContent=text;
+    msgEl.style.display='block';
+    msgEl.style.background=ok?'rgba(126,200,126,0.15)':'rgba(232,96,96,0.15)';
+    msgEl.style.color=ok?'var(--green)':'var(--red)';
+  };
+
+  if(!current||!newPw||!confirm) return showMsg('모든 항목을 입력하세요',false);
+  if(newPw.length<6) return showMsg('새 비밀번호는 6자 이상이어야 합니다',false);
+  if(newPw!==confirm) return showMsg('새 비밀번호가 일치하지 않습니다',false);
+
+  // 현재 비밀번호 확인 (재로그인으로 검증)
+  const {data:{user}}=await sb.auth.getUser();
+  const {error:signInErr}=await sb.auth.signInWithPassword({email:user.email, password:current});
+  if(signInErr) return showMsg('현재 비밀번호가 올바르지 않습니다',false);
+
+  // 비밀번호 변경
+  const {error}=await sb.auth.updateUser({password:newPw});
+  if(error) return showMsg('변경 실패: '+error.message,false);
+
+  showMsg('✅ 비밀번호가 변경되었습니다!',true);
+  ['pwCurrent','pwNew','pwConfirm'].forEach(id=>document.getElementById(id).value='');
+}
+
+async function addReason(){
+  const label=document.getElementById('rLabel').value.trim();
+  if(!label) return alert('사유를 입력하세요');
+  const tid=document.getElementById('rTeamId').value;
+  await sb.from('ot_reasons').insert({
+    label,
+    team_id: tid ? Number(tid) : null
+  });
+  if(tid) selectedSettingTeam=Number(tid);
+  await loadReasons(); closeModal('modalReason'); renderAll();
+  document.getElementById('rLabel').value='';
+}
+async function deleteReason(id){
+  if(!confirm('삭제하시겠습니까?')) return;
+  await sb.from('ot_reasons').delete().eq('id',id);
+  await loadReasons(); renderAll();
+}
+
+function openModal(id){document.getElementById(id).classList.add('open');}
+function closeModal(id){document.getElementById(id).classList.remove('open');}
+
+// ── EXCEL ──
+function exportExcel(){
+  const wb=XLSX.utils.book_new();
+  const ym=document.getElementById('dMonth').value;
+  const m2=[['이름','팀','직책','출근','퇴근','근무요일','연락처','상태']];
+  members.forEach(m=>{const t=getTeam(m.team_id);m2.push([m.name,t?.name||'',m.role,m.time_in,m.time_out,(m.work_days||[]).join(','),m.phone,m.status]);});
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(m2),'인원현황');
+  const o2=[['날짜','팀','이름','시작','마감','연장(h)','사유','비고']];
+  overtime.filter(o=>sameMonth(o.date,ym)).forEach(o=>{
+    const m=getMember(o.member_id),t=m?getTeam(m.team_id):null;
+    o2.push([o.date,t?.name||'',m?.name||'',o.start_time,o.end_time,o.hours||0,o.reason,o.note]);
+  });
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(o2),'연장근무');
+  XLSX.writeFile(wb,`근무관리_${ym}.xlsx`);
+}
+
+checkAuth();
+</script>
+</body>
+</html>
