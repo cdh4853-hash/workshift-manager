@@ -961,8 +961,16 @@ td{padding:11px 14px;font-size:13px}
         <select class="fsel" id="otEnd" onchange="calcOT()" style="font-family:var(--mono);font-size:13px"></select>
       </div>
 
+      <div class="fg" id="otLunchWrap" style="display:none">
+        <label>점심식사 (휴식차감)</label>
+        <select class="fsel" id="otLunchBreak" onchange="calcOT()" style="font-family:var(--mono);font-size:13px">
+          <option value="0">없음 (0분)</option>
+          <option value="0.5">30분</option>
+          <option value="1">1시간</option>
+        </select>
+      </div>
       <div class="fg">
-        <label>저녁식대 (휴식차감)</label>
+        <label>저녁식사 (휴식차감)</label>
         <select class="fsel" id="otMealBreak" onchange="calcOT()" style="font-family:var(--mono);font-size:13px">
           <option value="0">없음 (0분)</option>
           <option value="0.5">30분</option>
@@ -975,7 +983,7 @@ td{padding:11px 14px;font-size:13px}
           <input type="number" class="finput" id="otHourDirect"
             placeholder="예: 3 또는 1.5"
             min="0.5" max="24" step="0.5"
-            oninput="calcOT()"
+            oninput="calcOT(false)"
             style="width:160px;font-size:20px;font-weight:800;font-family:var(--mono);text-align:center;letter-spacing:1px">
           <span style="font-size:12px;color:var(--text3)">시간 단위 · 0.5h 단위<br>시작·마감 입력 시 자동계산</span>
         </div>
@@ -1002,7 +1010,7 @@ td{padding:11px 14px;font-size:13px}
       </div>
     </div>
     <div style="font-size:11px;color:var(--text3);margin-bottom:4px">
-      💡 시작·마감 입력 시 연장시간 자동계산 (총 시간 - 식대) · 야간가산도 자동반영
+      💡 시작·마감 입력 시 연장시간 자동계산 (총 시간 - 식사시간) · 휴일근무는 점심식사도 선택 가능 · 야간가산도 자동반영 · 연장시간은 직접 수정 가능
     </div>
     <div class="modal-acts">
       <button class="btn btn-ghost" onclick="closeModal('modalOT')">취소</button>
@@ -1037,7 +1045,15 @@ td{padding:11px 14px;font-size:13px}
       <div class="fg"><label>마감시간</label>
         <select class="fsel" id="editOtEnd" onchange="calcEditOT()" style="font-family:var(--mono);font-size:13px"></select>
       </div>
-      <div class="fg"><label>석식 (휴식차감)</label>
+      <div class="fg" id="editOtLunchWrap" style="display:none">
+        <label>점심식사 (휴식차감)</label>
+        <select class="fsel" id="editOtLunchBreak" onchange="calcEditOT()" style="font-family:var(--mono);font-size:13px">
+          <option value="0">없음 (0분)</option>
+          <option value="0.5">30분</option>
+          <option value="1">1시간</option>
+        </select>
+      </div>
+      <div class="fg"><label>저녁식사 (휴식차감)</label>
         <select class="fsel" id="editOtMealBreak" onchange="calcEditOT()" style="font-family:var(--mono);font-size:13px">
           <option value="0">없음 (0분)</option>
           <option value="0.5">30분</option>
@@ -1047,7 +1063,7 @@ td{padding:11px 14px;font-size:13px}
       <div class="fg full">
         <label>연장시간 <span style="color:var(--accent);font-weight:700">(직접 입력 또는 자동계산)</span></label>
         <input type="number" class="finput" id="editOtHour" min="0.5" max="24" step="0.5"
-          oninput="calcEditOT()"
+          oninput="calcEditOT(false)"
           style="width:160px;font-size:20px;font-weight:800;font-family:var(--mono);text-align:center">
       </div>
       <div class="fg full"><label>비고</label><input class="finput" id="editOtNote" style="width:100%"></div>
@@ -2689,17 +2705,20 @@ function calcNightHours(s,e){
   return {night,bonus};
 }
 
-function calcOT(){
+// 휴일근무 시 점심시간(12:00~13:00) 겹치는 만큼 자동 차감
+function calcOT(auto=true){
   const s=document.getElementById('otStart').value;
   const e=document.getElementById('otEnd').value;
   const mealBreak=parseFloat(document.getElementById('otMealBreak')?.value||0)||0;
+  const workType=document.getElementById('otWorkType').value;
+  const lunchBreak=workType==='holiday'?(parseFloat(document.getElementById('otLunchBreak')?.value||0)||0):0;
   const toMin=t=>{ const[h,m]=t.split(':').map(Number); return h*60+m; };
 
-  // 시작·마감 모두 있으면 자동계산 (총 시간 - 식대)
-  if(s && e && s!=='' && e!==''){
+  // 시작·마감 모두 있으면 자동계산 (총 시간 - 점심식사 - 저녁식사)
+  if(auto && s && e && s!=='' && e!==''){
     let sM=toMin(s), eM=toMin(e);
     if(eM<=sM) eM+=24*60;
-    const totalH=Math.round(((eM-sM)/60 - mealBreak)*2)/2;
+    const totalH=Math.round(((eM-sM)/60 - mealBreak - lunchBreak)*2)/2;
     if(totalH>0){
       document.getElementById('otHourDirect').value=totalH;
     }
@@ -2723,10 +2742,11 @@ function calcOT(){
 function calcOTDirect(){ calcOT(); } // 직접입력 변경 시에도 동일 함수 호출
 
 // ── 근무 유형 토글 ──
-function setWorkType(type){
+function setWorkType(type,recalc=true){
   document.getElementById('otWorkType').value=type;
   const btnOT=document.getElementById('wt-overtime');
   const btnHD=document.getElementById('wt-holiday');
+  const lunchWrap=document.getElementById('otLunchWrap');
   if(type==='overtime'){
     btnOT.style.borderColor='var(--green)';
     btnOT.style.background='rgba(126,200,126,.18)';
@@ -2734,6 +2754,8 @@ function setWorkType(type){
     btnHD.style.borderColor='var(--border2)';
     btnHD.style.background='transparent';
     btnHD.style.color='var(--text3)';
+    lunchWrap.style.display='none';
+    document.getElementById('otLunchBreak').value='0';
   } else {
     btnHD.style.borderColor='var(--red)';
     btnHD.style.background='rgba(232,96,96,.18)';
@@ -2741,13 +2763,16 @@ function setWorkType(type){
     btnOT.style.borderColor='var(--border2)';
     btnOT.style.background='transparent';
     btnOT.style.color='var(--text3)';
+    lunchWrap.style.display='';
   }
+  if(recalc) calcOT();
 }
 
-function setEditWorkType(type){
+function setEditWorkType(type,recalc=true){
   document.getElementById('editOtWorkType').value=type;
   const btnOT=document.getElementById('ewt-overtime');
   const btnHD=document.getElementById('ewt-holiday');
+  const lunchWrap=document.getElementById('editOtLunchWrap');
   if(type==='overtime'){
     btnOT.style.borderColor='var(--green)';
     btnOT.style.background='rgba(126,200,126,.18)';
@@ -2755,6 +2780,8 @@ function setEditWorkType(type){
     btnHD.style.borderColor='var(--border2)';
     btnHD.style.background='transparent';
     btnHD.style.color='var(--text3)';
+    lunchWrap.style.display='none';
+    document.getElementById('editOtLunchBreak').value='0';
   } else {
     btnHD.style.borderColor='var(--red)';
     btnHD.style.background='rgba(232,96,96,.18)';
@@ -2762,7 +2789,9 @@ function setEditWorkType(type){
     btnOT.style.borderColor='var(--border2)';
     btnOT.style.background='transparent';
     btnOT.style.color='var(--text3)';
+    lunchWrap.style.display='';
   }
+  if(recalc) calcEditOT();
 }
 
 // ── CRUD ──
@@ -3280,8 +3309,8 @@ function openEditOT(id){
   const mb=document.getElementById('editOtMealBreak');
   if(mb) mb.value=o.meal_break>0?String(o.meal_break):'0';
 
-  // 근무유형
-  setEditWorkType(o.work_type||'overtime');
+  // 근무유형 (기존 저장값 유지 - 재계산하지 않음)
+  setEditWorkType(o.work_type||'overtime', false);
 
   // 사유: 해당 팀 + 공통
   const tid=m?.team_id;
@@ -3291,15 +3320,17 @@ function openEditOT(id){
   openModal('modalEditOT');
 }
 
-function calcEditOT(){
+function calcEditOT(auto=true){
   const s=document.getElementById('editOtStart').value;
   const e=document.getElementById('editOtEnd').value;
   const mealBreak=parseFloat(document.getElementById('editOtMealBreak')?.value||0)||0;
+  const workType=document.getElementById('editOtWorkType').value;
+  const lunchBreak=workType==='holiday'?(parseFloat(document.getElementById('editOtLunchBreak')?.value||0)||0):0;
   const toMin=t=>{ const[h,m]=t.split(':').map(Number); return h*60+m; };
-  if(s && e && s!=='' && e!==''){
+  if(auto && s && e && s!=='' && e!==''){
     let sM=toMin(s), eM=toMin(e);
     if(eM<=sM) eM+=24*60;
-    const totalH=Math.round(((eM-sM)/60 - mealBreak)*2)/2;
+    const totalH=Math.round(((eM-sM)/60 - mealBreak - lunchBreak)*2)/2;
     if(totalH>0) document.getElementById('editOtHour').value=totalH;
   }
 }
