@@ -1295,7 +1295,7 @@ function setConn(s){
   else if(s==='err'){d.className='conn-dot err';l.textContent='오류';}
   else{d.className='conn-dot';l.textContent='연결중...';}
 }
-async function loadTeams(){const{data}=await sb.from('workshift_teams').select('*').order('created_at');teams=data||[];}
+async function loadTeams(){const{data}=await sb.from('workshift_teams').select('*').order('sort_order',{ascending:true,nullsFirst:false}).order('created_at');teams=data||[];}
 async function loadMembers(){const{data}=await sb.from('workshift_members').select('*').order('created_at');members=data||[];}
 async function loadOT(){const{data}=await sb.from('workshift_overtime').select('*').order('date',{ascending:false});overtime=data||[];}
 async function loadReasons(){const{data}=await sb.from('workshift_ot_reasons').select('*').order('created_at');reasons=data||[];}
@@ -2553,7 +2553,7 @@ function renderSchedule(){
     const tSP=activeSP.filter(sp=>sp.team_id===t.id);
     if(!tMembers.length && !tSP.length) return;
 
-    const totalCols=days+3; // 이름+팀+날짜들+합계
+    const totalCols=days+4; // 이름+팀+날짜들+연장합계+야간가산합계
     // 팀 헤더 행
     rows+=`<tr>
       <td colspan="${totalCols}" class="s-sticky1" style="background:${t.color}18;border-left:3px solid ${t.color};padding:8px 14px;position:sticky;left:0;z-index:2;min-width:unset;white-space:nowrap">
@@ -2572,10 +2572,14 @@ function renderSchedule(){
       const totalCell=totalH>0
         ? `<td style="background:rgba(59,130,246,.07);text-align:center;font-family:var(--mono);font-weight:800;font-size:13px;color:var(--accent);border-left:1px solid var(--border);white-space:nowrap">${totalH}h</td>`
         : `<td style="background:rgba(59,130,246,.04);text-align:center;font-size:11px;color:var(--text3);border-left:1px solid var(--border)">—</td>`;
+      const nightBonusH=nightAllowance.filter(n=>n.member_id===m.id&&n.date.startsWith(ymStr)).reduce((s,n)=>s+(n.bonus_hours||0),0);
+      const nightBonusCell=nightBonusH>0
+        ? `<td style="background:rgba(184,160,216,.1);text-align:center;font-family:var(--mono);font-weight:800;font-size:13px;color:var(--purple);border-left:1px solid var(--border);white-space:nowrap">${nightBonusH}h</td>`
+        : `<td style="background:rgba(184,160,216,.05);text-align:center;font-size:11px;color:var(--text3);border-left:1px solid var(--border)">—</td>`;
       rows+=`<tr>
         <td class="s-sticky1" style="font-weight:700;padding-left:20px">${m.name}</td>
         <td class="s-sticky2">${`<span class="badge" style="background:${t.color}22;color:${t.color}">${t.name}</span>`}</td>
-        ${cells}${totalCell}</tr>`;
+        ${cells}${totalCell}${nightBonusCell}</tr>`;
     });
 
     // 단기파트 행
@@ -2591,12 +2595,12 @@ function renderSchedule(){
       rows+=`<tr style="opacity:.88">
         <td class="s-sticky1" style="font-weight:700;color:#8b5cf6;padding-left:20px">${sp.name}<span style="font-size:9px;margin-left:3px;color:#8b5cf6aa">[단기]</span></td>
         <td class="s-sticky2"><span class="badge" style="background:#8b5cf622;color:#8b5cf6">${t.name}</span></td>
-        ${cells}<td style="border-left:1px solid var(--border)"></td></tr>`;
+        ${cells}<td style="border-left:1px solid var(--border)"></td><td style="border-left:1px solid var(--border)"></td></tr>`;
     });
   });
 
   document.getElementById('schedGrid').innerHTML=`<table>
-    <thead><tr><th class="s-th1">이름</th><th class="s-th2">팀</th>${hds}<th style="text-align:center;background:var(--s3);min-width:42px;border-left:1px solid var(--border);color:var(--accent);font-size:10px;letter-spacing:.5px;line-height:1.6">연장<br>근무<br>합계</th></tr></thead>
+    <thead><tr><th class="s-th1">이름</th><th class="s-th2">팀</th>${hds}<th style="text-align:center;background:var(--s3);min-width:42px;border-left:1px solid var(--border);color:var(--accent);font-size:10px;letter-spacing:.5px;line-height:1.6">연장<br>근무<br>합계</th><th style="text-align:center;background:var(--s3);min-width:42px;border-left:1px solid var(--border);color:var(--purple);font-size:10px;letter-spacing:.5px;line-height:1.6">야간<br>가산<br>수당</th></tr></thead>
     <tbody>${rows}</tbody></table>`;
 }
 // ── SETTINGS ──
@@ -2620,12 +2624,14 @@ function renderSettings(){
   // 팀 목록 렌더
   const tl=document.getElementById('teamSettingList');
   if(tl) tl.innerHTML=teams.length
-    ? teams.map(t=>`
+    ? teams.map((t,i)=>`
         <div onclick="selectSettingTeam(${t.id})" style="display:flex;align-items:center;justify-content:space-between;padding:9px 10px;border-radius:8px;cursor:pointer;margin-bottom:2px;background:${String(selectedSettingTeam)===String(t.id)?'rgba(59,130,246,.12)':'transparent'};border:1.5px solid ${String(selectedSettingTeam)===String(t.id)?'var(--accent)':'transparent'}">
           <span style="display:flex;align-items:center;gap:7px;font-size:13px;font-weight:700">
             <span style="width:9px;height:9px;border-radius:50%;background:${t.color};flex-shrink:0"></span>${t.name}
           </span>
-          <div style="display:flex;gap:4px">
+          <div style="display:flex;gap:4px;align-items:center">
+            <button class="btn btn-ghost btn-sm" style="padding:2px 6px;font-size:10px;${i===0?'opacity:.3;cursor:default':''}" ${i===0?'disabled':''} onclick="event.stopPropagation();moveTeam(${t.id},-1)">▲</button>
+            <button class="btn btn-ghost btn-sm" style="padding:2px 6px;font-size:10px;${i===teams.length-1?'opacity:.3;cursor:default':''}" ${i===teams.length-1?'disabled':''} onclick="event.stopPropagation();moveTeam(${t.id},1)">▼</button>
             <button class="btn btn-ghost btn-sm" style="padding:2px 7px;font-size:10px" onclick="event.stopPropagation();openEditTeam(${t.id})">✏️ 수정</button>
             <button class="btn btn-danger btn-sm" style="padding:2px 7px;font-size:10px" onclick="event.stopPropagation();deleteTeam(${t.id})">삭제</button>
           </div>
@@ -2665,6 +2671,18 @@ function reasonRow(r){
     <span style="font-size:13px;font-weight:600">${r.label}</span>
     <button class="btn btn-danger btn-sm" onclick="deleteReason(${r.id})">삭제</button>
   </div>`;
+}
+
+async function moveTeam(id,dir){
+  const idx=teams.findIndex(t=>String(t.id)===String(id));
+  const swapIdx=idx+dir;
+  if(idx<0||swapIdx<0||swapIdx>=teams.length) return;
+  const a=teams[idx], b=teams[swapIdx];
+  // sort_order 미설정(null) 팀이 섞여 있을 수 있으므로 현재 화면 순서를 기준으로 전체 재부여
+  const reordered=[...teams];
+  [reordered[idx],reordered[swapIdx]]=[reordered[swapIdx],reordered[idx]];
+  await Promise.all(reordered.map((t,i)=>sb.from('workshift_teams').update({sort_order:i}).eq('id',t.id)));
+  await loadTeams(); renderAll();
 }
 
 async function deleteTeam(id){
@@ -2823,7 +2841,8 @@ async function saveTeam(){
   if(editId){
     await sb.from('workshift_teams').update({name,color}).eq('id',editId);
   } else {
-    await sb.from('workshift_teams').insert({name,color});
+    const maxOrder=teams.reduce((m,t)=>Math.max(m,Number.isFinite(t.sort_order)?t.sort_order:-1),-1);
+    await sb.from('workshift_teams').insert({name,color,sort_order:maxOrder+1});
   }
   await loadTeams(); closeModal('modalTeam');
   document.getElementById('tName').value='';
@@ -3787,13 +3806,13 @@ function renderAnnualSummary(mList, yr) {
   const tbody = document.getElementById('annualSummaryBody');
   if (!tbody) return;
 
-  if (!mList.length) {
-    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:24px">인원 없음</td></tr>';
+  // 직원(팀장 포함)은 연차/반차 수량관리를 하지 않음 (Works 메신저로 별도 관리) → 파트타이머만 수량관리 대상
+  const partList = mList.filter(m => m.role === '파트타이머');
+
+  if (!partList.length) {
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:24px">인원 없음<div style="font-size:11px;margin-top:6px">※ 직원 연차/반차는 수량관리 대상이 아닙니다 (Works 메신저로 관리)</div></td></tr>';
     return;
   }
-
-  const empList  = mList.filter(m => m.role === '직원' || m.role === '팀장');
-  const partList = mList.filter(m => m.role === '파트타이머');
   const {role: sideRole2} = getSidebarFilter();
 
   function memberRow(m) {
@@ -3825,18 +3844,13 @@ function renderAnnualSummary(mList, yr) {
   }
 
   let rows = '';
-  const showEmp  = !sideRole2 || sideRole2 === 'all' || sideRole2 === '직원';
   const showPart = !sideRole2 || sideRole2 === 'all' || sideRole2 === '파트타이머';
 
-  if (showEmp && empList.length) {
-    rows += groupHeader('👤 직원', '#10b981', empList.length);
-    rows += empList.map(memberRow).join('');
-  }
   if (showPart && partList.length) {
     rows += groupHeader('👥 파트타이머', '#f59e0b', partList.length);
     rows += partList.map(memberRow).join('');
   }
-  tbody.innerHTML = rows || '<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:24px">인원 없음</td></tr>';
+  tbody.innerHTML = rows || '<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:24px">인원 없음<div style="font-size:11px;margin-top:6px">※ 직원 연차/반차는 수량관리 대상이 아닙니다 (Works 메신저로 관리)</div></td></tr>';
 }
 
 function renderAnnualMonthSchedule() {
@@ -3920,7 +3934,7 @@ function initLedgerModal(memberId, year) {
   yrSel.innerHTML = years.map(y=>`<option value="${y}" ${y===(year||yr)?'selected':''}>${y}년</option>`).join('');
 
   const mSel = document.getElementById('ledMember');
-  mSel.innerHTML = buildMemberOptions(memberId);
+  mSel.innerHTML = buildPartMemberOptions(memberId);
 
   if (memberId && year) {
     const ledger = annualLedger.find(l => l.member_id == memberId && l.year == year);
@@ -3951,7 +3965,7 @@ async function saveAnnualLedger() {
   const total_days = parseFloat(document.getElementById('ledTotal').value);
   const note = document.getElementById('ledNote').value.trim();
 
-  if (!member_id) return alert('직원을 선택하세요.');
+  if (!member_id) return alert('파트타이머를 선택하세요.');
   if (isNaN(total_days)) return alert('연도 연차수량을 입력하세요.');
 
   // 기존 동일 직원+연도 조회
@@ -4013,6 +4027,14 @@ function buildMemberOptions(selectedId) {
   const opt = m => `<option value="${m.id}" ${String(m.id)===String(selectedId)?'selected':''}>${m.name}${m.role==='팀장'?' (팀장)':''}</option>`;
   return '<option value="">직원 선택</option>'
     + (empGroup.length ? `<optgroup label="👤 직원">${empGroup.map(opt).join('')}</optgroup>` : '')
+    + (partGroup.length ? `<optgroup label="👥 파트타이머">${partGroup.map(opt).join('')}</optgroup>` : '');
+}
+
+// 연차 원장(수량관리)은 파트타이머만 대상 — 직원은 Works 메신저로 관리
+function buildPartMemberOptions(selectedId) {
+  const partGroup = members.filter(m=>m.role==='파트타이머');
+  const opt = m => `<option value="${m.id}" ${String(m.id)===String(selectedId)?'selected':''}>${m.name}</option>`;
+  return '<option value="">파트타이머 선택</option>'
     + (partGroup.length ? `<optgroup label="👥 파트타이머">${partGroup.map(opt).join('')}</optgroup>` : '');
 }
 
@@ -4900,10 +4922,10 @@ function onEditSpTeamChange() {
 <div class="overlay" id="modalAnnualLedger">
   <div class="modal" style="max-width:480px">
     <h3>📒 연차 원장 입력/수정</h3>
-    <div style="font-size:12px;color:var(--text3);margin-bottom:10px">※ 같은 직원+연도는 1건만 유지됩니다</div>
+    <div style="font-size:12px;color:var(--text3);margin-bottom:10px">※ 파트타이머만 수량관리 대상입니다 (직원은 Works 메신저로 관리) · 같은 인원+연도는 1건만 유지됩니다</div>
     <div class="form-grid">
       <div class="fg"><label>연도 *</label><select class="fsel" id="ledYear"></select></div>
-      <div class="fg"><label>직원 *</label><select class="fsel" id="ledMember"></select></div>
+      <div class="fg"><label>파트타이머 *</label><select class="fsel" id="ledMember"></select></div>
       <div class="fg"><label>이전 연차수량 (일)</label><input type="number" class="fsel" id="ledCarry" placeholder="0" step="0.5" min="0" value="0"></div>
       <div class="fg"><label id="ledTotalLabel">해당년도 연차수량 (일) *</label><input type="number" class="fsel" id="ledTotal" placeholder="15" step="0.5" min="0"></div>
       <div class="fg" style="grid-column:1/-1"><label>비고</label><input class="fsel" id="ledNote" placeholder="메모 (선택)"></div>
