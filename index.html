@@ -487,7 +487,7 @@ td{padding:11px 14px;font-size:13px}
           <select class="fsel" id="otMemberF" onchange="renderOTPage()"><option value="">전체 인원</option></select>
           <input type="text" class="fsel" id="otNameSearch" placeholder="🔍 이름 검색" oninput="renderOTPage()" style="width:120px">
           <input type="month" class="fsel" id="otMonth" onchange="renderOTPage()">
-          <button class="btn btn-ghost btn-sm" onclick="downloadAllOT()">⬇️ 연장근무 엑셀</button>
+          <button class="btn btn-ghost btn-sm" onclick="openOTDownloadModal()">⬇️ 연장근무 엑셀</button>
           <button class="btn btn-ghost btn-sm" onclick="downloadNightAllowanceExcel()">🌙 야간수당 엑셀</button>
           <button class="btn btn-ghost btn-sm" onclick="openBulkOT()">📋 일괄 입력</button>
           <button class="btn btn-primary" onclick="openAddOT()">＋ 연장 입력</button>
@@ -1079,6 +1079,20 @@ td{padding:11px 14px;font-size:13px}
   </div>
 </div>
 
+<div class="overlay" id="modalOTDownload">
+  <div class="modal" style="width:400px">
+    <h3>⬇️ 연장근무 엑셀 다운로드</h3>
+    <div style="font-size:12px;color:var(--text3);margin-bottom:14px">다운로드할 기간을 선택하세요</div>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <button class="btn btn-primary" id="otDlMonthBtn" onclick="downloadAllOT('month')" style="width:100%;justify-content:center;padding:12px;font-size:13px">📅 <span id="otDlMonthLabel">선택 월</span>만 받기</button>
+      <button class="btn btn-ghost" id="otDlAllBtn" onclick="downloadAllOT('all')" style="width:100%;justify-content:center;padding:12px;font-size:13px">📦 전체 기간 받기</button>
+    </div>
+    <div class="modal-acts">
+      <button class="btn btn-ghost" onclick="closeModal('modalOTDownload')">취소</button>
+    </div>
+  </div>
+</div>
+
 <div class="overlay" id="modalReason">
   <div class="modal" style="width:380px">
     <h3>연장사유 추가</h3>
@@ -1351,15 +1365,32 @@ async function downloadNightAllowanceExcel(){
   }
 }
 
-async function downloadAllOT(){
-  const btn=event.target;
-  btn.textContent='⏳ 불러오는 중...'; btn.disabled=true;
-  try{
-    const{data,error}=await sb.from('workshift_overtime').select('*').order('date',{ascending:false});
-    if(error) throw error;
-    if(!data?.length){ alert('연장근무 데이터가 없습니다.'); return; }
+function openOTDownloadModal(){
+  const ym=document.getElementById('otMonth').value||toKSTDateStr(new Date()).slice(0,7);
+  const [y,m]=ym.split('-');
+  document.getElementById('otDlMonthLabel').textContent=`${y}년 ${Number(m)}월`;
+  openModal('modalOTDownload');
+}
 
-    const header=['날짜','팀','이름','구분','시작시간','마감시간','연장시간(h)','야간시간(h)','가산수당(h)','사유','비고'];
+async function downloadAllOT(scope){
+  const ym=document.getElementById('otMonth').value||toKSTDateStr(new Date()).slice(0,7);
+  const btn=document.getElementById(scope==='month'?'otDlMonthBtn':'otDlAllBtn');
+  const btnHtml=btn.innerHTML;
+  btn.textContent='⏳ 불러오는 중...';
+  document.getElementById('otDlMonthBtn').disabled=true;
+  document.getElementById('otDlAllBtn').disabled=true;
+  try{
+    let q=sb.from('workshift_overtime').select('*').order('date',{ascending:false});
+    if(scope==='month'){
+      const [y,m]=ym.split('-').map(Number);
+      const last=new Date(y,m,0).getDate();
+      q=q.gte('date',`${ym}-01`).lte('date',`${ym}-${String(last).padStart(2,'0')}`);
+    }
+    const{data,error}=await q;
+    if(error) throw error;
+    if(!data?.length){ alert(scope==='month'?`${ym} 연장근무 데이터가 없습니다.`:'연장근무 데이터가 없습니다.'); return; }
+
+    const header=['날짜','팀','이름','구분','근무유형','시작시간','마감시간','연장시간(h)','야간시간(h)','가산수당(h)','사유','비고'];
     const rows=data.map(o=>{
       const m=getMember(o.member_id);
       const t=m?getTeam(m.team_id):null;
@@ -1368,6 +1399,7 @@ async function downloadAllOT(){
         t?.name||'',
         m?.name||'',
         m?.role||'',
+        o.work_type==='holiday'?'휴일근무':'연장근무',
         o.start_time||'',
         o.end_time||'',
         o.hours??'',
@@ -1380,15 +1412,18 @@ async function downloadAllOT(){
 
     const wb=XLSX.utils.book_new();
     const ws=XLSX.utils.aoa_to_sheet([header,...rows]);
-    const colWidths=[{wch:12},{wch:10},{wch:8},{wch:8},{wch:8},{wch:8},{wch:10},{wch:10},{wch:10},{wch:16},{wch:20}];
-    ws['!cols']=colWidths;
+    ws['!cols']=[{wch:12},{wch:20},{wch:8},{wch:10},{wch:10},{wch:8},{wch:8},{wch:10},{wch:10},{wch:10},{wch:16},{wch:40}];
     XLSX.utils.book_append_sheet(wb,ws,'연장근무');
-    const today=new Date().toISOString().slice(0,10);
-    XLSX.writeFile(wb,`연장근무_전체_${today}.xlsx`);
+    const today=toKSTDateStr(new Date());
+    const fname=scope==='month'?`연장근무_${ym}.xlsx`:`연장근무_전체_${today}.xlsx`;
+    XLSX.writeFile(wb,fname);
+    closeModal('modalOTDownload');
   } catch(e){
     alert('다운로드 실패: '+e.message);
   } finally{
-    btn.textContent='⬇️ 연장근무 엑셀'; btn.disabled=false;
+    btn.innerHTML=btnHtml;
+    document.getElementById('otDlMonthBtn').disabled=false;
+    document.getElementById('otDlAllBtn').disabled=false;
   }
 }
 
