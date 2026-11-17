@@ -276,7 +276,6 @@ td{padding:11px 14px;font-size:13px}
     <button class="nav-btn" onclick="goto('members')">👥 인원관리</button>
     <button class="nav-btn" onclick="goto('overtime')">⏱ 연장근무</button>
     <button class="nav-btn" onclick="goto('shortpart')">⚡ 단기파트</button>
-    <button class="nav-btn" onclick="goto('annual')">📋 연차관리</button>
     <button class="nav-btn" onclick="goto('schedule')">📅 스케줄표</button>
     <button class="nav-btn" onclick="goto('settings')">⚙️ 설정</button>
     <button class="nav-btn" onclick="goto('password')">🔒 비밀번호</button>
@@ -394,25 +393,6 @@ td{padding:11px 14px;font-size:13px}
           </div>
         </div>
 
-        <!-- 팀 연차/반차 일정 -->
-        <div class="two-col" style="gap:12px">
-          <div class="card" style="margin-bottom:0">
-            <div class="card-hd">
-              <span class="card-title">📅 이번 달 연차/반차 일정</span>
-              <span style="font-size:11px;color:var(--text3)" id="teamAnnualLabel"></span>
-            </div>
-            <div class="two-col" style="gap:8px;margin:0">
-              <div>
-                <div style="font-size:11px;font-weight:700;color:#3b82f6;margin-bottom:6px">👤 직원</div>
-                <div id="teamAnnualEmployee" style="min-height:32px"></div>
-              </div>
-              <div>
-                <div style="font-size:11px;font-weight:700;color:#10b981;margin-bottom:6px">👥 파트타이머</div>
-                <div id="teamAnnualParttime" style="min-height:32px"></div>
-              </div>
-            </div>
-          </div>
-
           <!-- 팀 단기파트 업무 현황 -->
           <div class="card" style="margin-bottom:0">
             <div class="card-hd">
@@ -427,7 +407,6 @@ td{padding:11px 14px;font-size:13px}
             </div>
             <div id="teamSpDetail"></div>
           </div>
-        </div>
       </div>
       <!-- 구분 선택 시: 직원/파트타이머 인원별 연장시간 -->
       <div id="dash-role" style="display:none">
@@ -438,24 +417,6 @@ td{padding:11px 14px;font-size:13px}
             <span style="cursor:pointer;font-size:12px;color:var(--accent)" onclick="backToAll()">← 전체 팀</span>
           </div>
           <div class="chart-wrap" id="roleChart" style="min-height:160px"></div>
-        </div>
-      </div>
-
-      <!-- 연차 대시보드 섹션 (전체보기 전용) -->
-      <div id="dashAnnualSection" style="margin-top:20px">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-          <span style="font-size:15px;font-weight:800;color:#ef4444">📅 이번 달 연차/반차 일정</span>
-          <span style="font-size:11px;color:var(--text3)" id="dashAnnualMonthLabel"></span>
-        </div>
-        <div class="two-col" style="gap:12px">
-          <div class="card" style="margin-bottom:0">
-            <div class="card-hd"><span class="card-title" style="color:#3b82f6">👤 직원</span></div>
-            <div id="dashAnnualEmployee" style="min-height:40px"></div>
-          </div>
-          <div class="card" style="margin-bottom:0">
-            <div class="card-hd"><span class="card-title" style="color:#10b981">👥 파트타이머</span></div>
-            <div id="dashAnnualParttime" style="min-height:40px"></div>
-          </div>
         </div>
       </div>
 
@@ -532,60 +493,6 @@ td{padding:11px 14px;font-size:13px}
           <table>
             <thead><tr><th>일시</th><th>작업</th><th>이름</th><th>날짜</th><th>연장(h)</th><th>변경자</th><th>상세</th></tr></thead>
             <tbody id="logBody"></tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-
-    <!-- ── ANNUAL LEAVE ── -->
-    <div class="page" id="page-annual">
-      <div class="sec-hd">
-        <div>
-          <div class="sec-title">📋 연차관리</div>
-          <div class="sec-sub" id="annualSub">연차 원장 및 사용 현황</div>
-        </div>
-        <div class="toolbar" style="flex-wrap:wrap;gap:8px">
-          <select class="fsel" id="annualTeamF" onchange="renderAnnual()"><option value="">전체 팀</option></select>
-          <select class="fsel" id="annualYear" onchange="renderAnnual()"></select>
-          <button class="btn btn-ghost btn-sm" onclick="downloadAnnual()">⬇️ 엑셀 다운로드</button>
-          <button class="btn btn-ghost btn-sm" onclick="openAddAnnualUsage()">＋ 연차/반차 입력</button>
-          <button class="btn btn-primary" onclick="openEditLedger()">📒 연차 원장 수정</button>
-        </div>
-      </div>
-
-      <!-- 서브탭 -->
-      <div class="sub-tabs">
-        <button class="sub-tab on" id="atab-summary" onclick="switchAnnualTab('summary')">📊 직원별 잔량</button>
-        <button class="sub-tab" id="atab-usage" onclick="switchAnnualTab('usage')">📅 사용 내역</button>
-      </div>
-
-      <!-- 직원별 잔량 탭 -->
-      <div id="annualTab-summary">
-        <div class="card">
-          <table>
-            <thead><tr>
-              <th>이름</th><th>팀</th><th>이전 연차</th><th id="annualYearTh">해당년도 연차</th>
-              <th>사용 (일)</th><th style="color:var(--green)">잔량 (일)</th><th>관리</th>
-            </tr></thead>
-            <tbody id="annualSummaryBody"></tbody>
-          </table>
-        </div>
-        <!-- 이번 달 연차 일정 -->
-        <div class="card" style="margin-top:12px">
-          <div class="card-hd"><span class="card-title">📅 이번 달 연차 일정</span></div>
-          <div id="annualMonthSchedule"></div>
-        </div>
-      </div>
-
-      <!-- 사용 내역 탭 -->
-      <div id="annualTab-usage" style="display:none">
-        <div class="card">
-          <table>
-            <thead><tr>
-              <th>이름</th><th>팀</th><th>구분</th><th>시작일</th><th>종료일</th>
-              <th>차감일수</th><th>비고</th><th>관리</th>
-            </tr></thead>
-            <tbody id="annualUsageBody"></tbody>
           </table>
         </div>
       </div>
@@ -1120,7 +1027,7 @@ const SURL='https://flevmhcogrwagyoxcacs.supabase.co';
 const SKEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZsZXZtaGNvZ3J3YWd5b3hjYWNzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIzNDk5ODAsImV4cCI6MjA4NzkyNTk4MH0.eWvh1kjdnG-juv77MMbnmnRSWa22eFP0sZn9r4wHsYg';
 const sb=supabase.createClient(SURL,SKEY);
 
-let teams=[],members=[],overtime=[],reasons=[],otLogs=[],nightAllowance=[],shortPartTimers=[],annualLedger=[],annualUsage=[];
+let teams=[],members=[],overtime=[],reasons=[],otLogs=[],nightAllowance=[],shortPartTimers=[];
 let activePage='dashboard';
 const DAYS=['월','화','수','목','금','토','일'];
 const COLORS=['#3b82f6','#10b981','#f59e0b','#f43f5e','#8b5cf6','#06b6d4','#ec4899','#14b8a6'];
@@ -1177,16 +1084,42 @@ async function sha256(str) {
   return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
 }
 
+// 로그인 상태 유지: 브라우저/탭을 닫아도 유지되도록 localStorage에 저장 (로그아웃 전까지 자동 로그인)
+const AUTH_KEY = 'momos_user';
+function saveAuth(user) {
+  try { localStorage.setItem(AUTH_KEY, JSON.stringify(user)); } catch(e) {}
+}
+function loadAuth() {
+  try {
+    // 예전 방식(sessionStorage)으로 저장된 값이 있으면 localStorage로 옮김
+    const old = sessionStorage.getItem(AUTH_KEY);
+    if (old && !localStorage.getItem(AUTH_KEY)) localStorage.setItem(AUTH_KEY, old);
+    sessionStorage.removeItem(AUTH_KEY);
+    const raw = localStorage.getItem(AUTH_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch(e) { return null; }
+}
+function clearAuth() {
+  try { localStorage.removeItem(AUTH_KEY); sessionStorage.removeItem(AUTH_KEY); } catch(e) {}
+}
+
 async function checkAuth() {
-  const saved = sessionStorage.getItem('momos_user');
-  if (saved) {
-    try {
-      currentUser = JSON.parse(saved);
-      showApp(currentUser.name + ' (' + currentUser.username + ')');
-    } catch { sessionStorage.removeItem('momos_user'); showLoginScreen(); }
-  } else {
-    showLoginScreen();
-  }
+  const saved = loadAuth();
+  if (!saved || !saved.id) { clearAuth(); showLoginScreen(); return; }
+  currentUser = saved;
+  // 자동 로그인 확인 중에는 로그인 화면이 깜빡이지 않도록 미리 숨김
+  document.getElementById('loginScreen').style.display = 'none';
+  // 계정이 삭제/비활성화된 경우에는 자동 로그인을 해제 (네트워크 오류 시에는 저장된 정보로 진행)
+  try {
+    const { data, error } = await sb.from('work_users')
+      .select('id,username,name,role,is_active').eq('id', saved.id).maybeSingle();
+    if (!error) {
+      if (!data || !data.is_active) { clearAuth(); currentUser = null; showLoginScreen(); return; }
+      currentUser = { id: data.id, username: data.username, name: data.name, role: data.role };
+      saveAuth(currentUser);
+    }
+  } catch(e) { console.warn('계정 확인 실패, 저장된 로그인 정보로 진행', e); }
+  showApp(currentUser.name + ' (' + currentUser.username + ')');
 }
 
 function showLoginScreen() {
@@ -1223,7 +1156,7 @@ async function doLogin() {
     } else {
       errEl.style.display = 'none';
       currentUser = { id: data.id, username: data.username, name: data.name, role: data.role };
-      sessionStorage.setItem('momos_user', JSON.stringify(currentUser));
+      saveAuth(currentUser);
       showApp(data.name + ' (' + data.username + ')');
     }
   } catch(e) {
@@ -1289,18 +1222,17 @@ async function doResetPassword() {
 }
 
 function doLogout() {
-  sessionStorage.removeItem('momos_user');
+  clearAuth();
   location.reload();
 }
 
 // ── INIT ──
 async function init(){
   setConn('loading');
-  try{ await Promise.all([loadTeams(),loadMembers(),loadOT(),loadReasons(),loadLogs(),loadNightAllowance(),loadShortPartTimers(),loadAnnualLedger(),loadAnnualUsage(),loadFavorites()]); setConn('ok'); }
+  try{ await Promise.all([loadTeams(),loadMembers(),loadOT(),loadReasons(),loadLogs(),loadNightAllowance(),loadShortPartTimers(),loadFavorites()]); setConn('ok'); }
   catch(e){ setConn('err'); console.error(e); }
   ['dMonth','otMonth','scMonth','spMonth'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=now.toISOString().slice(0,7); });
   initDashYear();
-  initAnnualYear();
   renderAll();
 }
 function setConn(s){
@@ -1316,8 +1248,6 @@ async function loadReasons(){const{data}=await sb.from('workshift_ot_reasons').s
 async function loadNightAllowance(){const{data}=await sb.from('workshift_night_allowance').select('*').order('date',{ascending:false});nightAllowance=data||[];}
 async function loadLogs(){const{data}=await sb.from('workshift_ot_logs').select('*').order('created_at',{ascending:false}).limit(200);otLogs=data||[];}
 async function loadShortPartTimers(){const{data}=await sb.from('workshift_short_part_timers').select('*').order('created_at',{ascending:false});shortPartTimers=data||[];}
-async function loadAnnualLedger(){const{data}=await sb.from('workshift_annual_ledger').select('*').order('year',{ascending:false});annualLedger=data||[];}
-async function loadAnnualUsage(){const{data}=await sb.from('workshift_annual_usage').select('*').order('start_date',{ascending:false});annualUsage=data||[];}
 
 async function downloadNightAllowanceExcel(){
   const btn=event.target;
@@ -1558,7 +1488,7 @@ function goto(p){
   activePage=p;
   document.querySelectorAll('.page').forEach(el=>el.classList.remove('on'));
   document.getElementById('page-'+p).classList.add('on');
-  document.querySelectorAll('.nav-btn').forEach((b,i)=>b.classList.toggle('on',['dashboard','members','overtime','shortpart','annual','schedule','settings','password'][i]===p));
+  document.querySelectorAll('.nav-btn').forEach((b,i)=>b.classList.toggle('on',['dashboard','members','overtime','shortpart','schedule','settings','password'][i]===p));
   renderPage(p);
 }
 function renderAll(){ renderSidebar(); renderPage(activePage); }
@@ -1567,7 +1497,6 @@ function renderPage(p){
   if(p==='members') renderMembers();
   if(p==='overtime') renderOTPage();
   if(p==='shortpart'){ if(spTabState==='fav') renderFavorites(); else if(spTabState==='monthly') renderSpMonthly(); else renderShortPart(); }
-  if(p==='annual') renderAnnual();
   if(p==='schedule') renderSchedule();
   if(p==='settings') renderSettings();
   if(p==='password') renderPasswordPage();
@@ -1611,11 +1540,9 @@ function selectTeam(id){
   selectedRole=null;
   ['all','employee','parttime'].forEach(k=>document.getElementById('role-'+k).classList.remove('on'));
   document.getElementById('dTeam').value=id||'';
-  // 단기파트 + 연차관리 팀 필터 동기화
+  // 단기파트 팀 필터 동기화
   const spTeamF=document.getElementById('spTeamF');
   if(spTeamF) spTeamF.value=id||'';
-  const annualTeamF=document.getElementById('annualTeamF');
-  if(annualTeamF) annualTeamF.value=id||'';
   renderAll();
 }
 
@@ -1795,17 +1722,11 @@ function renderDash(){
           <div class="mb-track"><div class="mb-fill" style="width:${h/rmMax*100}%;background:${COLORS[i%8]}">${h>0?h+'h':''}</div></div></div>`).join('')
       : '<div class="empty"><div class="ei">📋</div>데이터 없음</div>';
 
-    renderDashAnnual(); // ← 전체 뷰에서도 연차 일정 렌더
-    const annSec=document.getElementById('dashAnnualSection');
-    if(annSec) annSec.style.display='block';
 
   } else {
     // ── 팀 선택: 인원별 주간 연장 현황 ──
     document.getElementById('dash-all').style.display='none';
     document.getElementById('dash-team').style.display='block';
-    // 팀 상세 진입 시 전체 연차 섹션 숨김 (팀 카드 내 연차/반차로만 표시)
-    const annSec=document.getElementById('dashAnnualSection');
-    if(annSec) annSec.style.display='none';
 
     const t=getTeam(Number(tf));
     document.getElementById('teamDetailTitle').textContent=`${t?.name||'팀'} · 주간 연장근무 현황`;
@@ -1866,7 +1787,6 @@ function renderDash(){
       : '<div class="empty"><div class="ei">📋</div>사유 데이터 없음</div>';
 
     renderTeamDetail();
-    renderDashAnnual();
   }
 }
 
@@ -1944,16 +1864,13 @@ function renderTeamDetail(){
   document.getElementById('weekTableHead').innerHTML=head;
   document.getElementById('weekTableBody').innerHTML=body||'<tr><td colspan="99"><div class="empty" style="padding:20px">데이터 없음</div></td></tr>';
 
-  // 팀 연차 일정 + 단기파트 현황 렌더
-  renderDashAnnual(tf);
+  // 팀 단기파트 현황 렌더
   renderTeamSP(tf);
 }
 
 function backToAll(){
   selectedRole=null;
   ['all','employee','parttime'].forEach(k=>document.getElementById('role-'+k).classList.remove('on'));
-  const annSec=document.getElementById('dashAnnualSection');
-  if(annSec) annSec.style.display='block';
   selectTeam(null);
 }
 
@@ -1965,8 +1882,6 @@ function renderDashRole(){
   document.getElementById('dash-all').style.display='none';
   document.getElementById('dash-team').style.display='none';
   document.getElementById('dash-role').style.display='block';
-  const annSec=document.getElementById('dashAnnualSection');
-  if(annSec) annSec.style.display='none';
 
   const label=selectedRole==='all'?'전체':selectedRole;
   document.getElementById('dashSub').textContent=`${label} · ${ym.replace('-','년 ')}월 기준`;
@@ -2565,12 +2480,6 @@ function renderSchedule(){
           : `<td style="background:rgba(245,158,11,.08)" title="연장근무 ${ot.hours}h"><span style="color:#f59e0b;font-size:13px;font-weight:800">✓</span><br><span style="font-size:9px;color:#f59e0b;font-weight:700">${ot.hours}h</span></td>`;
       }
       if(!works) return `<td style="background:rgba(0,0,0,.25);color:var(--text3)">—</td>`;
-      const au=annualUsage.find(a=>a.member_id===m.id && ds>=a.start_date && ds<=a.end_date);
-      if(au){
-        const typeMap={'연차':['연차','#3b82f6','#3b82f622'],'오전반차':['오전반차','#8b5cf6','#8b5cf622'],'오후반차':['오후반차','#8b5cf6','#8b5cf622']};
-        const [lbl,color,bg]=typeMap[au.type]||['연차','#3b82f6','#3b82f622'];
-        return `<td><span style="background:${bg};color:${color};border-radius:4px;padding:2px 4px;font-size:10px;font-weight:700" title="${au.type} (${au.start_date}~${au.end_date}) ${au.deduct_days}일">${lbl}</span></td>`;
-      }
       if(holiday){
         return `<td title="${holiday.name}" style="background:rgba(0,0,0,.25);color:${holiday.isSub?'#f59e0b':'#ef4444'}">—</td>`;
       }
@@ -3752,455 +3661,6 @@ function downloadShortPart() {
 }
 
 
-// ══════════════════════════════════════════════
-// ── ANNUAL LEAVE (연차관리) ──
-// ══════════════════════════════════════════════
-
-let annualTabState = 'summary';
-
-function switchAnnualTab(tab) {
-  annualTabState = tab;
-  ['summary','usage'].forEach(t => {
-    document.getElementById('annualTab-'+t).style.display = t===tab?'':'none';
-    document.getElementById('atab-'+t).classList.toggle('on', t===tab);
-  });
-  renderAnnual();
-}
-
-function initAnnualYear() {
-  const sel = document.getElementById('annualYear');
-  if (!sel) return;
-  const yr = new Date().getFullYear();
-  // 현재년도 -3 ~ +20년 범위
-  const years = [];
-  for(let y = yr+20; y >= yr-3; y--) years.push(y);
-  sel.innerHTML = years.map(y=>`<option value="${y}" ${y===yr?'selected':''}>${y}년</option>`).join('');
-}
-
-// 팀 필터 채우기 (항상 동기화)
-function fillAnnualTeamFilter() {
-  const sel = document.getElementById('annualTeamF');
-  if (!sel) return;
-  const prevVal = sel.value;
-  sel.innerHTML = '<option value="">전체 팀</option>' +
-    teams.map(t => `<option value="${t.id}" ${String(t.id)===String(prevVal)?'selected':''}>${t.name}</option>`).join('');
-}
-
-// 직원별 연차 잔량 계산
-function getAnnualSummary(memberId, year) {
-  const ledger = annualLedger.find(l => l.member_id == memberId && l.year == year);
-  const carry = ledger?.carry_days || 0;
-  const total = ledger?.total_days || 0;
-  const usageList = annualUsage.filter(u => u.member_id == memberId && String(u.start_date||'').startsWith(String(year)));
-  const used = usageList.reduce((s, u) => s + (u.deduct_days || 0), 0);
-  const remain = carry + total - used;
-  return { carry, total, used: Math.round(used*10)/10, remain: Math.round(remain*10)/10, ledgerId: ledger?.id };
-}
-
-function renderAnnual() {
-  if (!document.getElementById('annualYear')) return;
-  initAnnualYear();
-  fillAnnualTeamFilter();
-
-  const yr = parseInt(document.getElementById('annualYear').value) || new Date().getFullYear();
-  const teamF = document.getElementById('annualTeamF')?.value || '';
-
-  // 연도에 맞게 th 업데이트
-  const thEl = document.getElementById('annualYearTh');
-  if (thEl) thEl.textContent = `${yr}년 연차`;
-  // 원장 모달 label도 업데이트
-  const ledLbl = document.getElementById('ledTotalLabel');
-  if (ledLbl) ledLbl.textContent = `${yr}년 연차수량 (일) *`;
-
-  const {role: sideRole} = getSidebarFilter();
-
-  let mList = members.filter(m => {
-    if (teamF && String(m.team_id) !== teamF) return false;
-    if (!matchRole(m.role, sideRole)) return false;
-    return true;
-  });
-  // 직원 그룹 → 파트타이머 그룹 순, 그 안에서 팀 → 이름 정렬
-  const roleOrder = r => (r === '직원' || r === '팀장') ? 0 : 1;
-  mList.sort((a, b) => {
-    const rA = roleOrder(a.role), rB = roleOrder(b.role);
-    if (rA !== rB) return rA - rB;
-    const tA = a.team_id || 0, tB = b.team_id || 0;
-    if (tA !== tB) return tA - tB;
-    return (a.name || '').localeCompare(b.name || '', 'ko');
-  });
-
-  if (annualTabState === 'summary') {
-    renderAnnualSummary(mList, yr);
-    renderAnnualMonthSchedule();
-  } else {
-    renderAnnualUsageList(mList, yr);
-  }
-}
-
-function renderAnnualSummary(mList, yr) {
-  const tbody = document.getElementById('annualSummaryBody');
-  if (!tbody) return;
-
-  // 직원(팀장 포함)은 연차/반차 수량관리를 하지 않음 (Works 메신저로 별도 관리) → 파트타이머만 수량관리 대상
-  const partList = mList.filter(m => m.role === '파트타이머');
-
-  if (!partList.length) {
-    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:24px">인원 없음<div style="font-size:11px;margin-top:6px">※ 직원 연차/반차는 수량관리 대상이 아닙니다 (Works 메신저로 관리)</div></td></tr>';
-    return;
-  }
-  const {role: sideRole2} = getSidebarFilter();
-
-  function memberRow(m) {
-    const t = getTeam(m.team_id);
-    const s = getAnnualSummary(m.id, yr);
-    const remainColor = s.remain < 0 ? 'var(--red)' : s.remain === 0 ? 'var(--text3)' : 'var(--green)';
-    const totalAll = s.carry + s.total;
-    return `<tr>
-      <td style="font-weight:700;white-space:nowrap">${m.name}<span style="font-size:10px;color:var(--text3);font-weight:400;margin-left:4px">${m.role==='팀장'?'(팀장)':''}</span></td>
-      <td>${t ? `<span class="badge" style="background:${t.color}22;color:${t.color}">${t.name}</span>` : '-'}</td>
-      <td style="text-align:center;color:var(--text3)">${s.carry > 0 ? `<span style="color:var(--orange);font-weight:700">${s.carry}</span>` : '0'}</td>
-      <td style="text-align:center">${s.total}<span style="font-size:10px;color:var(--text3);margin-left:2px">(합계 ${totalAll})</span></td>
-      <td style="text-align:center;color:var(--orange)">${s.used}</td>
-      <td style="text-align:center;font-weight:800;color:${remainColor}">${s.remain}</td>
-      <td style="white-space:nowrap">
-        <button class="btn btn-ghost btn-sm" style="padding:2px 8px;font-size:11px" onclick="openEditLedgerFor('${m.id}',${yr})">원장</button>
-        <button class="btn btn-ghost btn-sm" style="padding:2px 8px;font-size:11px;color:var(--red)" onclick="openAddAnnualUsageFor('${m.id}')">사용입력</button>
-      </td>
-    </tr>`;
-  }
-
-  function groupHeader(label, color, count) {
-    return `<tr>
-      <td colspan="7" style="background:${color}18;border-top:2px solid ${color}55;padding:7px 14px">
-        <span style="font-size:11px;font-weight:800;color:${color};letter-spacing:.5px">${label}</span>
-        <span style="font-size:10px;color:var(--text3);margin-left:6px">${count}명</span>
-      </td>
-    </tr>`;
-  }
-
-  let rows = '';
-  const showPart = !sideRole2 || sideRole2 === 'all' || sideRole2 === '파트타이머';
-
-  if (showPart && partList.length) {
-    rows += groupHeader('👥 파트타이머', '#f59e0b', partList.length);
-    rows += partList.map(memberRow).join('');
-  }
-  tbody.innerHTML = rows || '<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:24px">인원 없음<div style="font-size:11px;margin-top:6px">※ 직원 연차/반차는 수량관리 대상이 아닙니다 (Works 메신저로 관리)</div></td></tr>';
-}
-
-function renderAnnualMonthSchedule() {
-  const el = document.getElementById('annualMonthSchedule');
-  if (!el) return;
-  const today = new Date();
-  const ym = today.toISOString().slice(0, 7);
-  const mStart = ym+'-01', mEnd = ym+'-31';
-  const thisMonthUsage = annualUsage.filter(u => u.start_date <= mEnd && u.end_date >= mStart)
-    .sort((a,b) => a.start_date > b.start_date ? 1 : -1);
-
-  if (!thisMonthUsage.length) {
-    el.innerHTML = '<div style="color:var(--text3);font-size:12px;padding:8px 0">이번 달 등록된 연차/반차 일정이 없습니다.</div>';
-    return;
-  }
-  const typeColor = {'연차':'#ef4444','오전반차':'#f59e0b','오후반차':'#f59e0b'};
-  el.innerHTML = `<table style="width:100%">
-    <thead><tr style="font-size:11px;color:var(--text3)"><th>이름</th><th>구분</th><th>시작일</th><th>종료일</th><th>차감</th><th>비고</th></tr></thead>
-    <tbody>${thisMonthUsage.map(u => {
-      const m = members.find(x => x.id == u.member_id);
-      const color = typeColor[u.type] || '#ef4444';
-      return `<tr style="font-size:12px">
-        <td style="font-weight:700">${m?.name || '-'}</td>
-        <td><span style="background:${color}22;color:${color};border-radius:4px;padding:2px 6px;font-size:10px;font-weight:700">${u.type}</span></td>
-        <td style="font-family:var(--mono);font-size:11px">${u.start_date}</td>
-        <td style="font-family:var(--mono);font-size:11px">${u.end_date}</td>
-        <td style="text-align:center">${u.deduct_days}일</td>
-        <td style="font-size:11px;color:var(--text3)">${u.note||'-'}</td>
-      </tr>`;
-    }).join('')}</tbody></table>`;
-}
-
-function renderAnnualUsageList(mList, yr) {
-  const tbody = document.getElementById('annualUsageBody');
-  if (!tbody) return;
-  const memberIds = mList.map(m => m.id);
-  let list = annualUsage.filter(u => memberIds.includes(u.member_id) && String(u.start_date||'').startsWith(String(yr)));
-  list.sort((a,b) => b.start_date > a.start_date ? 1 : -1);
-
-  if (!list.length) {
-    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--text3);padding:24px">사용 내역 없음</td></tr>';
-    return;
-  }
-  const typeColor = {'연차':'#ef4444','오전반차':'#f59e0b','오후반차':'#f59e0b'};
-  tbody.innerHTML = list.map(u => {
-    const m = members.find(x => x.id == u.member_id);
-    const t = m ? getTeam(m.team_id) : null;
-    const color = typeColor[u.type] || '#ef4444';
-    return `<tr>
-      <td style="font-weight:700">${m?.name||'-'}<span style="font-size:9px;font-weight:700;padding:1px 5px;border-radius:8px;margin-left:4px;${m?.role==='파트타이머'?'background:rgba(245,158,11,.15);color:#f59e0b':'background:rgba(16,185,129,.15);color:#10b981'}">${m?.role==='파트타이머'?'파트':'직원'}</span></td>
-      <td>${t ? `<span class="badge" style="background:${t.color}22;color:${t.color}">${t.name}</span>` : '-'}</td>
-      <td><span style="background:${color}22;color:${color};border-radius:4px;padding:2px 6px;font-size:10px;font-weight:700">${u.type}</span></td>
-      <td style="font-family:var(--mono);font-size:12px">${u.start_date}</td>
-      <td style="font-family:var(--mono);font-size:12px">${u.end_date}</td>
-      <td style="text-align:center;font-weight:700">${u.deduct_days}</td>
-      <td style="font-size:11px;color:var(--text3)">${u.note||'-'}</td>
-      <td>
-        <button class="btn btn-ghost btn-sm" style="padding:2px 8px;font-size:11px" onclick="openEditAnnualUsage('${u.id}')">수정</button>
-        <button class="btn btn-danger btn-sm" style="padding:2px 8px;font-size:11px" onclick="deleteAnnualUsage('${u.id}')">삭제</button>
-      </td>
-    </tr>`;
-  }).join('');
-}
-
-// ── 연차 원장 모달 ──
-function openEditLedger() {
-  initLedgerModal();
-  openModal('modalAnnualLedger');
-}
-
-function openEditLedgerFor(memberId, year) {
-  initLedgerModal(memberId, year);
-  openModal('modalAnnualLedger');
-}
-
-function initLedgerModal(memberId, year) {
-  const yrSel = document.getElementById('ledYear');
-  const yr = new Date().getFullYear();
-  const years = [];
-  for(let y = yr+20; y >= yr-3; y--) years.push(y);
-  yrSel.innerHTML = years.map(y=>`<option value="${y}" ${y===(year||yr)?'selected':''}>${y}년</option>`).join('');
-
-  const mSel = document.getElementById('ledMember');
-  mSel.innerHTML = buildPartMemberOptions(memberId);
-
-  if (memberId && year) {
-    const ledger = annualLedger.find(l => l.member_id == memberId && l.year == year);
-    document.getElementById('ledCarry').value = ledger?.carry_days || 0;
-    document.getElementById('ledTotal').value = ledger?.total_days || '';
-    document.getElementById('ledNote').value = ledger?.note || '';
-  } else {
-    document.getElementById('ledCarry').value = 0;
-    document.getElementById('ledTotal').value = '';
-    document.getElementById('ledNote').value = '';
-  }
-}
-
-// ── 권한 체크 ──
-async function getCurrentUserRole() {
-  return currentUser?.role || null;
-}
-
-function isPrivilegedUser() {
-  // work_users 기반: admin이거나 일반 사용자 모두 현재는 허용
-  return !!currentUser;
-}
-
-async function saveAnnualLedger() {
-  const year = parseInt(document.getElementById('ledYear').value);
-  const member_id = document.getElementById('ledMember').value;
-  const carry_days = parseFloat(document.getElementById('ledCarry').value) || 0;
-  const total_days = parseFloat(document.getElementById('ledTotal').value);
-  const note = document.getElementById('ledNote').value.trim();
-
-  if (!member_id) return alert('파트타이머를 선택하세요.');
-  if (isNaN(total_days)) return alert('연도 연차수량을 입력하세요.');
-
-  // 기존 동일 직원+연도 조회
-  const existing = annualLedger.find(l => l.member_id == member_id && l.year == year);
-  let error;
-  if (existing) {
-    ({error} = await sb.from('workshift_annual_ledger').update({carry_days, total_days, note, updated_at: new Date().toISOString()}).eq('id', existing.id));
-  } else {
-    ({error} = await sb.from('workshift_annual_ledger').insert({member_id, year, carry_days, total_days, note}));
-  }
-  if (error) return alert('저장 실패: ' + error.message);
-
-  // 다음 연도 이월 자동 처리
-  // 저장 후 잔량 계산해서 다음 연도 carry_days 자동 반영 제안
-  await loadAnnualLedger();
-  const savedSummary = getAnnualSummary(member_id, year);
-  const carryForNext = Math.max(0, savedSummary.remain);
-  const nextYear = year + 1;
-  const nextExisting = annualLedger.find(l => l.member_id == member_id && l.year == nextYear);
-
-  if (carryForNext > 0 && !nextExisting) {
-    // 다음 연도 레코드가 없으면 이월연차만 자동 생성
-    const {error: e2} = await sb.from('workshift_annual_ledger').insert({
-      member_id, year: nextYear,
-      carry_days: carryForNext,
-      total_days: 0,
-      note: `${year}년 잔여 자동이월`
-    });
-    if (!e2) {
-      await loadAnnualLedger();
-      alert(`저장 완료!\n\n✅ ${nextYear}년 이월연차 자동 생성\n이월: ${carryForNext}일\n\n💡 ${nextYear}년 연차 탭에서 해당년도 연차수량을 추가로 입력하세요.`);
-    }
-  } else if (carryForNext > 0 && nextExisting && nextExisting.carry_days !== carryForNext) {
-    // 다음 연도 레코드가 있으면 이월연차 업데이트 제안
-    if (confirm(`${year}년 잔여연차 ${carryForNext}일을 ${nextYear}년 이월연차에 반영할까요?\n현재 ${nextYear}년 이월연차: ${nextExisting.carry_days}일`)) {
-      await sb.from('workshift_annual_ledger').update({carry_days: carryForNext}).eq('id', nextExisting.id);
-      await loadAnnualLedger();
-    }
-  }
-
-  closeModal('modalAnnualLedger');
-  renderAnnual();
-}
-
-// ── 연차/반차 사용 입력 모달 ──
-function openAddAnnualUsage() {
-  initUsageModal();
-  openModal('modalAnnualUsage');
-}
-
-function openAddAnnualUsageFor(memberId) {
-  initUsageModal(memberId);
-  openModal('modalAnnualUsage');
-}
-
-function buildMemberOptions(selectedId) {
-  const empGroup = members.filter(m=>m.role==='직원'||m.role==='팀장');
-  const partGroup = members.filter(m=>m.role==='파트타이머');
-  const opt = m => `<option value="${m.id}" ${String(m.id)===String(selectedId)?'selected':''}>${m.name}${m.role==='팀장'?' (팀장)':''}</option>`;
-  return '<option value="">직원 선택</option>'
-    + (empGroup.length ? `<optgroup label="👤 직원">${empGroup.map(opt).join('')}</optgroup>` : '')
-    + (partGroup.length ? `<optgroup label="👥 파트타이머">${partGroup.map(opt).join('')}</optgroup>` : '');
-}
-
-// 연차 원장(수량관리)은 파트타이머만 대상 — 직원은 Works 메신저로 관리
-function buildPartMemberOptions(selectedId) {
-  const partGroup = members.filter(m=>m.role==='파트타이머');
-  const opt = m => `<option value="${m.id}" ${String(m.id)===String(selectedId)?'selected':''}>${m.name}</option>`;
-  return '<option value="">파트타이머 선택</option>'
-    + (partGroup.length ? `<optgroup label="👥 파트타이머">${partGroup.map(opt).join('')}</optgroup>` : '');
-}
-
-function initUsageModal(memberId) {
-  document.getElementById('editUsageId').value = '';
-  document.getElementById('usageMember').innerHTML = buildMemberOptions(memberId);
-  document.getElementById('usageType').value = '연차';
-  document.getElementById('usageStart').value = '';
-  document.getElementById('usageEnd').value = '';
-  document.getElementById('usageDays').value = '';
-  document.getElementById('usageNote').value = '';
-  document.getElementById('usageCalcDays').textContent = '—';
-  document.getElementById('usageRemainInfo').textContent = '';
-  if (memberId) calcUsageDays();
-}
-
-function calcUsageDays() {
-  const type = document.getElementById('usageType').value;
-  const start = document.getElementById('usageStart').value;
-  const end = document.getElementById('usageEnd').value;
-
-  let days = 0;
-  if (type === '오전반차' || type === '오후반차') {
-    days = 0.5;
-    document.getElementById('usageEnd').value = start; // 반차는 당일
-  } else if (start && end) {
-    const s = new Date(start), e = new Date(end);
-    if (e >= s) {
-      let cnt = 0;
-      const cur = new Date(s);
-      while (cur <= e) {
-        const dow = cur.getDay();
-        if (dow !== 0 && dow !== 6) cnt++;
-        cur.setDate(cur.getDate()+1);
-      }
-      days = cnt;
-    }
-  }
-
-  if (days > 0) {
-    document.getElementById('usageDays').value = days;
-    document.getElementById('usageCalcDays').textContent = days + '일';
-    // 잔량 표시
-    const memberId = document.getElementById('usageMember').value;
-    const yr = start ? parseInt(start.slice(0,4)) : new Date().getFullYear();
-    if (memberId) {
-      const s = getAnnualSummary(memberId, yr);
-      const editId = document.getElementById('editUsageId').value;
-      const editingUsage = editId ? annualUsage.find(u=>u.id==editId) : null;
-      const currentUsed = editingUsage ? editingUsage.deduct_days : 0;
-      const afterRemain = Math.round((s.remain + currentUsed - days)*10)/10;
-      document.getElementById('usageRemainInfo').textContent = `잔량: ${s.remain}일 → ${afterRemain}일`;
-      document.getElementById('usageRemainInfo').style.color = afterRemain < 0 ? 'var(--red)' : 'var(--text3)';
-    }
-  } else {
-    document.getElementById('usageCalcDays').textContent = '—';
-  }
-}
-
-function calcUsageDaysDirect() {
-  const v = parseFloat(document.getElementById('usageDays').value) || 0;
-  document.getElementById('usageCalcDays').textContent = v > 0 ? v + '일' : '—';
-}
-
-async function saveAnnualUsage() {
-  const editId = document.getElementById('editUsageId').value;
-  const member_id = document.getElementById('usageMember').value;
-  const type = document.getElementById('usageType').value;
-  const start_date = document.getElementById('usageStart').value;
-  const end_date = document.getElementById('usageEnd').value || start_date;
-  const deduct_days = parseFloat(document.getElementById('usageDays').value);
-  const note = document.getElementById('usageNote').value.trim();
-
-  if (!member_id) return alert('직원을 선택하세요.');
-  if (!start_date) return alert('시작일을 입력하세요.');
-  if (!deduct_days || deduct_days <= 0) return alert('차감일수를 입력하세요.');
-
-  let error;
-  if (editId) {
-    ({error} = await sb.from('workshift_annual_usage').update({member_id, type, start_date, end_date, deduct_days, note, updated_at: new Date().toISOString()}).eq('id', editId));
-  } else {
-    ({error} = await sb.from('workshift_annual_usage').insert({member_id, type, start_date, end_date, deduct_days, note}));
-  }
-  if (error) return alert('저장 실패: ' + error.message);
-  await loadAnnualUsage();
-  closeModal('modalAnnualUsage');
-  renderAnnual();
-  renderDash();
-}
-
-function openEditAnnualUsage(id) {
-  const u = annualUsage.find(x => x.id == id);
-  if (!u) return;
-  document.getElementById('editUsageId').value = u.id;
-  document.getElementById('usageMember').innerHTML = buildMemberOptions(u.member_id);
-  document.getElementById('usageType').value = u.type || '연차';
-  document.getElementById('usageStart').value = u.start_date || '';
-  document.getElementById('usageEnd').value = u.end_date || '';
-  document.getElementById('usageDays').value = u.deduct_days || '';
-  document.getElementById('usageNote').value = u.note || '';
-  document.getElementById('usageCalcDays').textContent = (u.deduct_days||0) + '일';
-  openModal('modalAnnualUsage');
-}
-
-async function deleteAnnualUsage(id) {
-  const u = annualUsage.find(x => x.id == id);
-  if (!confirm(`"${members.find(m=>m.id==u?.member_id)?.name}" 의 ${u?.type} 기록을 삭제하시겠습니까?`)) return;
-  const {error} = await sb.from('workshift_annual_usage').delete().eq('id', id);
-  if (error) return alert('삭제 실패: ' + error.message);
-  await loadAnnualUsage();
-  renderAnnual();
-  renderDash();
-}
-
-function downloadAnnual() {
-  const yr = parseInt(document.getElementById('annualYear')?.value) || new Date().getFullYear();
-  const headers = ['이름','팀','이전연차','연도연차','사용일수','잔량'];
-  const rows = members.map(m => {
-    const t = getTeam(m.team_id);
-    const s = getAnnualSummary(m.id, yr);
-    return [m.name, t?.name||'', s.carry, s.total, s.used, s.remain].join(',');
-  });
-  const csv = [headers.join(','), ...rows].join('\n');
-  const blob = new Blob(['\uFEFF'+csv], {type:'text/csv;charset=utf-8;'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href=url; a.download=`연차관리_${yr}.csv`;
-  a.click(); URL.revokeObjectURL(url);
-}
-
-
 // ── 단기파트 업무명 연장사유 연동 ──
 function spTaskSelChange() {
   const sel = document.getElementById('spTaskSel').value;
@@ -4374,82 +3834,6 @@ function downloadFavorites() {
 
 // fillSpTaskOptions → fillSpTaskByTeam으로 대체됨
 
-
-// ══════════════════════════════════════════════
-// ── 전체 대시보드: 연차 일정 (직원/파트타이머 구분) ──
-// ══════════════════════════════════════════════
-
-function renderDashAnnual(teamId) {
-  // teamId 있으면 팀별, 없으면 전체
-  const isTeam = !!teamId;
-  const today = new Date().toISOString().slice(0, 10);
-  const ym = today.slice(0, 7);
-  const mStart = ym + '-01', mEnd = ym + '-31';
-
-  // 이달 사용 내역 필터
-  let list = annualUsage.filter(u => u.start_date <= mEnd && u.end_date >= mStart);
-  if (isTeam) {
-    const teamMemberIds = members.filter(m => String(m.team_id) === String(teamId)).map(m => m.id);
-    list = list.filter(u => teamMemberIds.includes(u.member_id));
-  }
-  list.sort((a, b) => a.start_date > b.start_date ? 1 : -1);
-
-  const monthLabel = ym.replace('-', '년 ') + '월';
-  const typeColor = { '연차': '#ef4444', '오전반차': '#f59e0b', '오후반차': '#f59e0b' };
-
-  function buildRows(roleFilter, hideTeam) {
-    const filtered = list.filter(u => {
-      const m = members.find(x => x.id == u.member_id);
-      if (!m) return false;
-      return roleFilter === '직원' ? (m.role === '직원' || m.role === '팀장') : m.role === '파트타이머';
-    });
-    if (!filtered.length) {
-      return '<div style="color:var(--text3);font-size:12px;padding:8px 12px">일정 없음</div>';
-    }
-    return `<table style="width:100%;table-layout:auto">
-      <thead><tr style="font-size:10px;color:var(--text3)">
-        <th style="white-space:nowrap;padding:6px 10px">이름</th>
-        <th style="white-space:nowrap;padding:6px 6px">구분</th>
-        ${hideTeam ? '' : '<th style="white-space:nowrap;padding:6px 6px">소속팀</th>'}
-        <th style="white-space:nowrap;padding:6px 6px">기간</th>
-        <th style="white-space:nowrap;padding:6px 6px">일수</th>
-      </tr></thead>
-      <tbody>${filtered.map(u => {
-        const m = members.find(x => x.id == u.member_id);
-        const t = m ? getTeam(m.team_id) : null;
-        const color = typeColor[u.type] || '#ef4444';
-        const period = u.start_date === u.end_date
-          ? u.start_date
-          : u.start_date + ' ~\u00A0' + u.end_date;
-        return `<tr style="font-size:11px">
-          <td style="font-weight:700;white-space:nowrap;padding:5px 10px">${m?.name || '-'}</td>
-          <td style="white-space:nowrap;padding:5px 6px"><span style="background:${color}22;color:${color};border-radius:3px;padding:1px 5px;font-size:10px;font-weight:700">${u.type}</span></td>
-          ${hideTeam ? '' : `<td style="padding:5px 6px">${t ? `<span style="color:${t.color};font-size:10px;white-space:nowrap">${t.name}</span>` : '-'}</td>`}
-          <td style="font-family:var(--mono);font-size:10px;color:var(--text2);white-space:nowrap;padding:5px 6px">${period}</td>
-          <td style="text-align:center;font-size:10px;white-space:nowrap;padding:5px 6px">${u.deduct_days}일</td>
-        </tr>`;
-      }).join('')}</tbody>
-    </table>`;
-  }
-
-  if (isTeam) {
-    // 팀 대시보드 - 소속팀 컬럼 숨김
-    const labelEl = document.getElementById('teamAnnualLabel');
-    if (labelEl) labelEl.textContent = monthLabel;
-    const empEl = document.getElementById('teamAnnualEmployee');
-    const ptEl = document.getElementById('teamAnnualParttime');
-    if (empEl) empEl.innerHTML = buildRows('직원', true);
-    if (ptEl) ptEl.innerHTML = buildRows('파트타이머', true);
-  } else {
-    // 전체 대시보드 - 소속팀 표시
-    const labelEl = document.getElementById('dashAnnualMonthLabel');
-    if (labelEl) labelEl.textContent = monthLabel;
-    const empEl = document.getElementById('dashAnnualEmployee');
-    const ptEl = document.getElementById('dashAnnualParttime');
-    if (empEl) empEl.innerHTML = buildRows('직원', false);
-    if (ptEl) ptEl.innerHTML = buildRows('파트타이머', false);
-  }
-}
 
 // ══════════════════════════════════════════════
 // ── 팀 대시보드: 단기파트 업무 현황 ──
@@ -4952,57 +4336,6 @@ function onEditSpTeamChange() {
   </div>
 </div>
 
-
-<!-- ── 연차 원장 수정 모달 ── -->
-<div class="overlay" id="modalAnnualLedger">
-  <div class="modal" style="max-width:480px">
-    <h3>📒 연차 원장 입력/수정</h3>
-    <div style="font-size:12px;color:var(--text3);margin-bottom:10px">※ 파트타이머만 수량관리 대상입니다 (직원은 Works 메신저로 관리) · 같은 인원+연도는 1건만 유지됩니다</div>
-    <div class="form-grid">
-      <div class="fg"><label>연도 *</label><select class="fsel" id="ledYear"></select></div>
-      <div class="fg"><label>파트타이머 *</label><select class="fsel" id="ledMember"></select></div>
-      <div class="fg"><label>이전 연차수량 (일)</label><input type="number" class="fsel" id="ledCarry" placeholder="0" step="0.5" min="0" value="0"></div>
-      <div class="fg"><label id="ledTotalLabel">해당년도 연차수량 (일) *</label><input type="number" class="fsel" id="ledTotal" placeholder="15" step="0.5" min="0"></div>
-      <div class="fg" style="grid-column:1/-1"><label>비고</label><input class="fsel" id="ledNote" placeholder="메모 (선택)"></div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal('modalAnnualLedger')">취소</button>
-      <button class="btn btn-primary" onclick="saveAnnualLedger()">저장</button>
-    </div>
-  </div>
-</div>
-
-<!-- ── 연차/반차 사용 입력 모달 ── -->
-<div class="overlay" id="modalAnnualUsage">
-  <div class="modal" style="max-width:480px">
-    <h3>📅 연차/반차 입력</h3>
-    <input type="hidden" id="editUsageId">
-    <div class="form-grid">
-      <div class="fg"><label>직원 *</label><select class="fsel" id="usageMember" onchange="calcUsageDays()"></select></div>
-      <div class="fg"><label>구분 *</label>
-        <select class="fsel" id="usageType" onchange="calcUsageDays()">
-          <option value="연차">연차</option>
-          <option value="오전반차">오전반차</option>
-          <option value="오후반차">오후반차</option>
-        </select>
-      </div>
-      <div class="fg"><label>시작일 *</label><input type="date" class="fsel" id="usageStart" onchange="calcUsageDays()"></div>
-      <div class="fg"><label>종료일 *</label><input type="date" class="fsel" id="usageEnd" onchange="calcUsageDays()"></div>
-      <div class="fg"><label>차감일수</label>
-        <input type="number" class="fsel" id="usageDays" step="0.5" min="0.5" placeholder="자동 계산" oninput="calcUsageDaysDirect()">
-      </div>
-      <div class="fg"><label>비고</label><input class="fsel" id="usageNote" placeholder="메모 (선택)"></div>
-    </div>
-    <div style="background:var(--s2);border-radius:8px;padding:10px 14px;margin:10px 0;font-size:12px;color:var(--text2)">
-      차감일수: <strong id="usageCalcDays" style="color:var(--accent)">—</strong>
-      <span style="margin-left:12px;color:var(--text3)" id="usageRemainInfo"></span>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal('modalAnnualUsage')">취소</button>
-      <button class="btn btn-primary" onclick="saveAnnualUsage()">저장</button>
-    </div>
-  </div>
-</div>
 
 </body>
 </html>
